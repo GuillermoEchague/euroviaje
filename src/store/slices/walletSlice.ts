@@ -21,6 +21,12 @@ const walletSlice = createSlice({
     addWallet: (state, action: PayloadAction<Wallet>) => {
       state.wallets.push(action.payload);
     },
+    updateWallet: (state, action: PayloadAction<Wallet>) => {
+      const index = state.wallets.findIndex(w => w.id === action.payload.id);
+      if (index !== -1) {
+        state.wallets[index] = action.payload;
+      }
+    },
     updateWalletBalance: (state, action: PayloadAction<{ id: number; balanceEur: number }>) => {
       const wallet = state.wallets.find(w => w.id === action.payload.id);
       if (wallet) {
@@ -36,5 +42,5 @@ const walletSlice = createSlice({
   },
 });
 
-export const { setWallets, addWallet, updateWalletBalance, removeWallet, setLoading } = walletSlice.actions;
+export const { setWallets, addWallet, updateWallet, updateWalletBalance, removeWallet, setLoading } = walletSlice.actions;
 export default walletSlice.reducer;

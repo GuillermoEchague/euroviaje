@@ -50,6 +50,25 @@ export const WalletRepository = {
     }
   },
 
+  async update(id: number, wallet: Omit<Wallet, 'id'>): Promise<void> {
+    try {
+      const db = await getDatabase();
+      await db.runAsync(
+        'UPDATE wallets SET name = ?, type = ?, balance_eur_cents = ?, initial_exchange_rate = ? WHERE id = ?',
+        sanitizeParams([
+          wallet.name,
+          wallet.type,
+          Math.round((wallet.balanceEur || 0) * 100),
+          wallet.initialExchangeRate,
+          id
+        ])
+      );
+    } catch (error) {
+      console.error('WalletRepository.update error:', error);
+      throw error;
+    }
+  },
+
   async updateBalance(walletId: number, newBalance: number): Promise<void> {
     try {
       const db = await getDatabase();

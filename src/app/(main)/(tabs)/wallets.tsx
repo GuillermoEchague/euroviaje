@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, StyleSheet, FlatList, Modal, Alert } from "react-native";
+import { View, StyleSheet, FlatList, Modal, Alert, TouchableOpacity } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -7,7 +7,10 @@ import {
   Wallet as WalletIcon,
   CreditCard,
   Banknote,
+  Trash2,
+  Edit2,
 } from "lucide-react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import Typography from "../../../components/atoms/Typography";
 import Card from "../../../components/molecules/Card";
 import Button from "../../../components/atoms/Button";
@@ -16,7 +19,8 @@ import { RootState } from "../../../store";
 import { formatCurrency } from "../../../utils/format";
 import { Wallet, WalletType } from "../../../domain/models";
 import { WalletRepository } from "../../../infrastructure/database/repositories/WalletRepository";
-import { addWallet, setWallets } from "../../../store/slices/walletSlice";
+import { ExpenseRepository } from "../../../infrastructure/database/repositories/ExpenseRepository";
+import { addWallet, updateWallet, removeWallet, setWallets } from "../../../store/slices/walletSlice";
 
 export default function WalletsScreen() {
   const { t } = useTranslation();
@@ -26,12 +30,33 @@ export default function WalletsScreen() {
   const { exchangeRate } = useSelector((state: RootState) => state.settings);
 
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingWallet, setEditingWallet] = useState<Wallet | null>(null);
   const [name, setName] = useState("");
   const [balance, setBalance] = useState("");
   const [type, setType] = useState<WalletType>("cash");
   const [loading, setLoading] = useState(false);
 
-  const handleAddWallet = async () => {
+  const resetForm = () => {
+    setName("");
+    setBalance("");
+    setType("cash");
+    setEditingWallet(null);
+  };
+
+  const handleOpenAdd = () => {
+    resetForm();
+    setModalVisible(true);
+  };
+
+  const handleOpenEdit = (wallet: Wallet) => {
+    setEditingWallet(wallet);
+    setName(wallet.name);
+    setBalance(wallet.balanceEur.toString());
+    setType(wallet.type);
+    setModalVisible(true);
+  };
+
+  const handleSaveWallet = async () => {
     if (!user || !name || !balance) {
       Alert.alert("Error", "Por favor completa todos los campos");
       return;
@@ -39,25 +64,90 @@ export default function WalletsScreen() {
 
     setLoading(true);
     try {
-      const newWallet: Omit<Wallet, "id"> = {
-        userId: user.id,
-        name,
-        type,
-        balanceEur: parseFloat(balance),
-        initialExchangeRate: exchangeRate,
-      };
+      if (editingWallet) {
+        const updatedWallet: Wallet = {
+          ...editingWallet,
+          name,
+          type,
+          balanceEur: parseFloat(balance),
+        };
+        await WalletRepository.update(editingWallet.id, updatedWallet);
+        dispatch(updateWallet(updatedWallet));
+      } else {
+        const newWallet: Omit<Wallet, "id"> = {
+          userId: user.id,
+          name,
+          type,
+          balanceEur: parseFloat(balance),
+          initialExchangeRate: exchangeRate,
+        };
 
-      const id = await WalletRepository.create(newWallet);
-      dispatch(addWallet({ ...newWallet, id }));
+        const id = await WalletRepository.create(newWallet);
+        dispatch(addWallet({ ...newWallet, id }));
+      }
       setModalVisible(false);
-      setName("");
-      setBalance("");
+      resetForm();
     } catch (error) {
       console.error(error);
-      Alert.alert("Error", "No se pudo crear la billetera");
+      Alert.alert("Error", "No se pudo guardar la billetera");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteWallet = async (wallet: Wallet) => {
+    try {
+      const expenseCount = await ExpenseRepository.countByWalletId(wallet.id);
+      if (expenseCount > 0) {
+        Alert.alert(
+          "No se puede eliminar",
+          "Esta billetera tiene gastos asociados. Elimina los gastos primero o edita la billetera."
+        );
+        return;
+      }
+
+      Alert.alert(
+        "Eliminar billetera",
+        "¿Estás seguro de que deseas eliminar esta billetera?",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Eliminar",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await WalletRepository.delete(wallet.id);
+                dispatch(removeWallet(wallet.id));
+              } catch (error) {
+                console.error(error);
+                Alert.alert("Error", "No se pudo eliminar la billetera");
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const renderRightActions = (wallet: Wallet) => {
+    return (
+      <View style={styles.rightActions}>
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: "#007AFF" }]}
+          onPress={() => handleOpenEdit(wallet)}
+        >
+          <Edit2 size={20} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: "#FF3B30" }]}
+          onPress={() => handleDeleteWallet(wallet)}
+        >
+          <Trash2 size={20} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    );
   };
 
   const getIcon = (type: WalletType) => {
@@ -79,7 +169,7 @@ export default function WalletsScreen() {
         <Typography variant="h1">{t("wallets.title")}</Typography>
         <Button
           title={t("common.add")}
-          onPress={() => setModalVisible(true)}
+          onPress={handleOpenAdd}
           style={styles.addButton}
           textStyle={{ fontSize: 14 }}
         />
@@ -97,41 +187,43 @@ export default function WalletsScreen() {
               ? "#FF3B30"
               : "#007AFF";
           return (
-            <Card
-              style={[
-                styles.walletCard,
-                { borderLeftWidth: 6, borderLeftColor: bgColor },
-              ]}
-            >
-              <View style={styles.walletInfo}>
-                <View
-                  style={[styles.iconWrapper, { backgroundColor: bgColor }]}
-                >
-                  {getIcon(item.type)}
+            <Swipeable renderRightActions={() => renderRightActions(item)}>
+              <Card
+                style={[
+                  styles.walletCard,
+                  { borderLeftWidth: 6, borderLeftColor: bgColor },
+                ]}
+              >
+                <View style={styles.walletInfo}>
+                  <View
+                    style={[styles.iconWrapper, { backgroundColor: bgColor }]}
+                  >
+                    {getIcon(item.type)}
+                  </View>
+                  <View style={styles.walletDetails}>
+                    <Typography variant="h3">{item.name}</Typography>
+                    <Typography variant="caption" color="#666">
+                      {t(`wallets.${item.type}`)}
+                    </Typography>
+                  </View>
                 </View>
-                <View style={styles.walletDetails}>
-                  <Typography variant="h3">{item.name}</Typography>
-                  <Typography variant="caption" color="#666">
-                    {t(`wallets.${item.type}`)}
+                <View style={styles.walletBalance}>
+                  <Typography
+                    variant="h3"
+                    color={
+                      item.type === "credit" && item.balanceEur < 0
+                        ? "#FF3B30"
+                        : "#000"
+                    }
+                  >
+                    {formatCurrency(item.balanceEur, "EUR")}
+                  </Typography>
+                  <Typography variant="caption" color="#999">
+                    {formatCurrency(item.balanceEur * exchangeRate, "CLP")}
                   </Typography>
                 </View>
-              </View>
-              <View style={styles.walletBalance}>
-                <Typography
-                  variant="h3"
-                  color={
-                    item.type === "credit" && item.balanceEur < 0
-                      ? "#FF3B30"
-                      : "#000"
-                  }
-                >
-                  {formatCurrency(item.balanceEur, "EUR")}
-                </Typography>
-                <Typography variant="caption" color="#999">
-                  {formatCurrency(item.balanceEur * exchangeRate, "CLP")}
-                </Typography>
-              </View>
-            </Card>
+              </Card>
+            </Swipeable>
           );
         }}
         ListEmptyComponent={
@@ -146,11 +238,16 @@ export default function WalletsScreen() {
         }
       />
 
-      <Modal visible={modalVisible} animationType="slide" transparent>
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setModalVisible(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Typography variant="h2" style={styles.modalTitle}>
-              {t("wallets.add_wallet")}
+              {editingWallet ? "Editar Billetera" : t("wallets.add_wallet")}
             </Typography>
 
             <Input
@@ -195,7 +292,7 @@ export default function WalletsScreen() {
               />
               <Button
                 title={t("common.save")}
-                onPress={handleAddWallet}
+                onPress={handleSaveWallet}
                 loading={loading}
                 style={styles.modalButton}
               />
@@ -232,6 +329,19 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingLeft: 12,
+    marginVertical: 0,
+    borderRadius: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E5EA",
+  },
+  rightActions: {
+    flexDirection: "row",
+    width: 140,
+  },
+  actionButton: {
+    width: 70,
+    justifyContent: "center",
+    alignItems: "center",
   },
   walletInfo: {
     flexDirection: "row",

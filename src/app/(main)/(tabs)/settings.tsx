@@ -21,6 +21,7 @@ export default function SettingsScreen() {
   const { exchangeRate, tripStartDate, initialBudgetEur } = useSelector((state: RootState) => state.settings);
 
   const [rate, setRate] = useState(exchangeRate.toString());
+  const [budget, setBudget] = useState(initialBudgetEur.toString());
 
   const handleUpdateRate = async () => {
     const rateNum = parseFloat(rate);
@@ -31,6 +32,17 @@ export default function SettingsScreen() {
     await SettingsRepository.set('exchangeRate', rateNum.toString());
     dispatch(setSettings({ exchangeRate: rateNum }));
     Alert.alert('Éxito', 'Tipo de cambio actualizado');
+  };
+
+  const handleUpdateBudget = async () => {
+    const budgetNum = parseFloat(budget);
+    if (isNaN(budgetNum) || budgetNum < 0) {
+      Alert.alert('Error', 'Por favor ingresa un presupuesto válido');
+      return;
+    }
+    await SettingsRepository.set('initialBudgetEur', budgetNum.toString());
+    dispatch(setSettings({ initialBudgetEur: budgetNum }));
+    Alert.alert('Éxito', 'Presupuesto inicial actualizado');
   };
 
   const handleLogout = () => {
@@ -63,9 +75,18 @@ export default function SettingsScreen() {
             <Typography variant="label">Fecha de inicio:</Typography>
             <Typography variant="body">{tripStartDate || 'No definida'}</Typography>
           </View>
-          <View style={[styles.infoRow, { marginTop: 12 }]}>
-            <Typography variant="label">Presupuesto inicial:</Typography>
-            <Typography variant="body">{initialBudgetEur} EUR</Typography>
+          <View style={{ marginTop: 16 }}>
+            <Input
+              label="Presupuesto inicial (EUR)"
+              value={budget}
+              onChangeText={setBudget}
+              keyboardType="numeric"
+            />
+            <Button
+              title="Actualizar presupuesto"
+              onPress={handleUpdateBudget}
+              variant="secondary"
+            />
           </View>
         </Card>
 

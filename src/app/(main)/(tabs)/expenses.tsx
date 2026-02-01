@@ -3,7 +3,8 @@ import { View, StyleSheet, FlatList, Modal, Alert, TouchableOpacity, ScrollView 
 import { useSelector, useDispatch } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Filter, Utensils, Train, Hotel, ShoppingCart, HeartPulse, Ticket, Package } from 'lucide-react-native';
+import { Plus, Filter, Utensils, Train, Hotel, ShoppingCart, HeartPulse, Ticket, Package, Trash2, Edit2 } from 'lucide-react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import Typography from '../../../components/atoms/Typography';
 import Card from '../../../components/molecules/Card';
 import Button from '../../../components/atoms/Button';
@@ -13,7 +14,7 @@ import { formatCurrency, formatDate } from '../../../utils/format';
 import { Expense } from '../../../domain/models';
 import { ExpenseRepository } from '../../../infrastructure/database/repositories/ExpenseRepository';
 import { WalletRepository } from '../../../infrastructure/database/repositories/WalletRepository';
-import { addExpense } from '../../../store/slices/expenseSlice';
+import { addExpense, updateExpense, removeExpense } from '../../../store/slices/expenseSlice';
 import { updateWalletBalance } from '../../../store/slices/walletSlice';
 
 const CATEGORIES = [
@@ -35,6 +36,7 @@ export default function ExpensesScreen() {
   const { exchangeRate } = useSelector((state: RootState) => state.settings);
 
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('others');
@@ -54,7 +56,29 @@ export default function ExpensesScreen() {
     return <Icon size={size} color={color} />;
   };
 
-  const handleAddExpense = async () => {
+  const resetForm = () => {
+    setTitle('');
+    setAmount('');
+    setCategory('others');
+    setWalletId(null);
+    setEditingExpense(null);
+  };
+
+  const handleOpenAdd = () => {
+    resetForm();
+    setModalVisible(true);
+  };
+
+  const handleOpenEdit = (expense: Expense) => {
+    setEditingExpense(expense);
+    setTitle(expense.title);
+    setAmount(expense.amountEur.toString());
+    setCategory(expense.category);
+    setWalletId(expense.walletId);
+    setModalVisible(true);
+  };
+
+  const handleSaveExpense = async () => {
     if (!user || !title || !amount || !walletId) {
       Alert.alert('Error', 'Por favor completa todos los campos');
       return;
@@ -67,36 +91,118 @@ export default function ExpensesScreen() {
 
     setLoading(true);
     try {
-      const newExpense: Omit<Expense, 'id'> = {
-        userId: user.id,
-        walletId,
-        title,
-        amountEur,
-        amountClp: amountEur * exchangeRate,
-        category,
-        exchangeRate,
-        date: new Date().toISOString()
-      };
+      if (editingExpense) {
+        const updatedExpense: Expense = {
+          ...editingExpense,
+          walletId,
+          title,
+          amountEur,
+          amountClp: amountEur * exchangeRate,
+          category,
+          exchangeRate,
+        };
 
-      const id = await ExpenseRepository.create(newExpense);
-      dispatch(addExpense({ ...newExpense, id }));
+        await ExpenseRepository.update(editingExpense.id, updatedExpense);
+        dispatch(updateExpense(updatedExpense));
 
-      // Update wallet balance
-      const newBalance = selectedWallet.balanceEur - amountEur;
-      await WalletRepository.updateBalance(walletId, newBalance);
-      dispatch(updateWalletBalance({ id: walletId, balanceEur: newBalance }));
+        // Adjust wallet balances
+        if (editingExpense.walletId === walletId) {
+          const diff = amountEur - editingExpense.amountEur;
+          const newBalance = selectedWallet.balanceEur - diff;
+          await WalletRepository.updateBalance(walletId, newBalance);
+          dispatch(updateWalletBalance({ id: walletId, balanceEur: newBalance }));
+        } else {
+          // Refund old wallet
+          const oldWallet = wallets.find(w => w.id === editingExpense.walletId);
+          if (oldWallet) {
+            const oldWalletNewBalance = oldWallet.balanceEur + editingExpense.amountEur;
+            await WalletRepository.updateBalance(oldWallet.id, oldWalletNewBalance);
+            dispatch(updateWalletBalance({ id: oldWallet.id, balanceEur: oldWalletNewBalance }));
+          }
+          // Charge new wallet
+          const newWalletNewBalance = selectedWallet.balanceEur - amountEur;
+          await WalletRepository.updateBalance(walletId, newWalletNewBalance);
+          dispatch(updateWalletBalance({ id: walletId, balanceEur: newWalletNewBalance }));
+        }
+      } else {
+        const newExpense: Omit<Expense, 'id'> = {
+          userId: user.id,
+          walletId,
+          title,
+          amountEur,
+          amountClp: amountEur * exchangeRate,
+          category,
+          exchangeRate,
+          date: new Date().toISOString()
+        };
+
+        const id = await ExpenseRepository.create(newExpense);
+        dispatch(addExpense({ ...newExpense, id }));
+
+        // Update wallet balance
+        const newBalance = selectedWallet.balanceEur - amountEur;
+        await WalletRepository.updateBalance(walletId, newBalance);
+        dispatch(updateWalletBalance({ id: walletId, balanceEur: newBalance }));
+      }
 
       setModalVisible(false);
-      setTitle('');
-      setAmount('');
-      setCategory('others');
-      setWalletId(null);
+      resetForm();
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'No se pudo registrar el gasto');
+      Alert.alert('Error', 'No se pudo guardar el gasto');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteExpense = async (expense: Expense) => {
+    Alert.alert(
+      'Eliminar gasto',
+      '¿Estás seguro de que deseas eliminar este gasto?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await ExpenseRepository.delete(expense.id);
+              dispatch(removeExpense(expense.id));
+
+              // Refund wallet
+              const wallet = wallets.find(w => w.id === expense.walletId);
+              if (wallet) {
+                const newBalance = wallet.balanceEur + expense.amountEur;
+                await WalletRepository.updateBalance(wallet.id, newBalance);
+                dispatch(updateWalletBalance({ id: wallet.id, balanceEur: newBalance }));
+              }
+            } catch (error) {
+              console.error(error);
+              Alert.alert('Error', 'No se pudo eliminar el gasto');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const renderRightActions = (expense: Expense) => {
+    return (
+      <View style={styles.rightActions}>
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: '#007AFF' }]}
+          onPress={() => handleOpenEdit(expense)}
+        >
+          <Edit2 size={20} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: '#FF3B30' }]}
+          onPress={() => handleDeleteExpense(expense)}
+        >
+          <Trash2 size={20} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    );
   };
 
   return (
@@ -105,7 +211,7 @@ export default function ExpensesScreen() {
         <Typography variant="h1">{t('expenses.title')}</Typography>
         <Button
           title={t('common.add')}
-          onPress={() => setModalVisible(true)}
+          onPress={handleOpenAdd}
           style={styles.addButton}
           textStyle={{ fontSize: 14 }}
         />
@@ -136,21 +242,23 @@ export default function ExpensesScreen() {
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
-          <Card style={styles.expenseCard}>
-            <View style={styles.expenseIconContainer}>
-              <CategoryIcon categoryId={item.category} color={CATEGORIES.find(c => c.id === item.category)?.color} />
-            </View>
-            <View style={styles.expenseInfo}>
-              <Typography variant="h3">{item.title}</Typography>
-              <Typography variant="caption" color="#666">
-                {formatDate(item.date)} • {t(`categories.${item.category}`)}
-              </Typography>
-            </View>
-            <View style={styles.expenseAmount}>
-              <Typography variant="h3" color="#FF3B30">-{formatCurrency(item.amountEur, 'EUR')}</Typography>
-              <Typography variant="caption" color="#999">-{formatCurrency(item.amountClp, 'CLP')}</Typography>
-            </View>
-          </Card>
+          <Swipeable renderRightActions={() => renderRightActions(item)}>
+            <Card style={styles.expenseCard}>
+              <View style={styles.expenseIconContainer}>
+                <CategoryIcon categoryId={item.category} color={CATEGORIES.find(c => c.id === item.category)?.color} />
+              </View>
+              <View style={styles.expenseInfo}>
+                <Typography variant="h3">{item.title}</Typography>
+                <Typography variant="caption" color="#666">
+                  {formatDate(item.date)} • {t(`categories.${item.category}`)}
+                </Typography>
+              </View>
+              <View style={styles.expenseAmount}>
+                <Typography variant="h3" color="#FF3B30">-{formatCurrency(item.amountEur, 'EUR')}</Typography>
+                <Typography variant="caption" color="#999">-{formatCurrency(item.amountClp, 'CLP')}</Typography>
+              </View>
+            </Card>
+          </Swipeable>
         )}
         ListEmptyComponent={
           <Typography variant="body" color="#999" align="center" style={{ marginTop: 40 }}>
@@ -159,11 +267,18 @@ export default function ExpensesScreen() {
         }
       />
 
-      <Modal visible={modalVisible} animationType="slide" transparent>
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setModalVisible(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { maxHeight: '90%' }]}>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Typography variant="h2" style={styles.modalTitle}>{t('expenses.add_expense')}</Typography>
+              <Typography variant="h2" style={styles.modalTitle}>
+                {editingExpense ? 'Editar Gasto' : t('expenses.add_expense')}
+              </Typography>
 
               <Input
                 label="Título"
@@ -227,7 +342,7 @@ export default function ExpensesScreen() {
                 />
                 <Button
                   title={t('common.save')}
-                  onPress={handleAddExpense}
+                  onPress={handleSaveExpense}
                   loading={loading}
                   style={styles.modalButton}
                 />
@@ -279,6 +394,19 @@ const styles = StyleSheet.create({
   },
   expenseCard: {
     flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 0,
+    borderRadius: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  rightActions: {
+    flexDirection: 'row',
+    width: 140,
+  },
+  actionButton: {
+    width: 70,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   expenseIconContainer: {

@@ -1,11 +1,11 @@
 import React from 'react';
-import { Text, StyleSheet, TextStyle } from 'react-native';
+import { Text, StyleSheet, TextStyle, StyleProp } from 'react-native';
 
 interface TypographyProps {
   children: React.ReactNode;
   variant?: 'h1' | 'h2' | 'h3' | 'body' | 'caption' | 'label';
   color?: string;
-  style?: TextStyle;
+  style?: StyleProp<TextStyle>;
   align?: 'auto' | 'left' | 'right' | 'center' | 'justify';
 }
 
