@@ -32,11 +32,20 @@ export const initDatabase = async () => {
       user_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       type TEXT NOT NULL,
-      balance_eur_cents INTEGER NOT NULL DEFAULT 0,
+      currency TEXT NOT NULL DEFAULT 'EUR',
+      balance_cents INTEGER NOT NULL DEFAULT 0,
       initial_exchange_rate REAL NOT NULL,
       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     );
   `);
+
+  // Migration for wallets if needed
+  try {
+    await db.execAsync('ALTER TABLE wallets ADD COLUMN currency TEXT NOT NULL DEFAULT "EUR";');
+  } catch (e) {}
+  try {
+    await db.execAsync('ALTER TABLE wallets RENAME COLUMN balance_eur_cents TO balance_cents;');
+  } catch (e) {}
 
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS expenses (
@@ -45,6 +54,7 @@ export const initDatabase = async () => {
       wallet_id INTEGER NOT NULL,
       title TEXT NOT NULL,
       description TEXT,
+      amount_original_cents INTEGER NOT NULL DEFAULT 0,
       amount_eur_cents INTEGER NOT NULL,
       amount_clp_cents INTEGER NOT NULL,
       category TEXT NOT NULL,
@@ -54,6 +64,11 @@ export const initDatabase = async () => {
       FOREIGN KEY (wallet_id) REFERENCES wallets (id) ON DELETE CASCADE
     );
   `);
+
+  // Migration for expenses if needed
+  try {
+    await db.execAsync('ALTER TABLE expenses ADD COLUMN amount_original_cents INTEGER NOT NULL DEFAULT 0;');
+  } catch (e) {}
 
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS settings (

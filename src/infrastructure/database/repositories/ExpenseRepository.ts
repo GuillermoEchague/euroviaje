@@ -13,6 +13,7 @@ export const ExpenseRepository = {
         wallet_id: number;
         title: string;
         description: string | null;
+        amount_original_cents: number;
         amount_eur_cents: number;
         amount_clp_cents: number;
         category: string;
@@ -26,6 +27,7 @@ export const ExpenseRepository = {
         walletId: row.wallet_id,
         title: row.title,
         description: row.description || undefined,
+        amountOriginal: (row.amount_original_cents || 0) / 100,
         amountEur: (row.amount_eur_cents || 0) / 100,
         amountClp: (row.amount_clp_cents || 0) / 100,
         category: row.category,
@@ -42,12 +44,13 @@ export const ExpenseRepository = {
     try {
       const db = await getDatabase();
       const result = await db.runAsync(
-        'INSERT INTO expenses (user_id, wallet_id, title, description, amount_eur_cents, amount_clp_cents, category, exchange_rate, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO expenses (user_id, wallet_id, title, description, amount_original_cents, amount_eur_cents, amount_clp_cents, category, exchange_rate, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         sanitizeParams([
           expense.userId,
           expense.walletId,
           expense.title,
           expense.description || null,
+          Math.round((expense.amountOriginal || 0) * 100),
           Math.round((expense.amountEur || 0) * 100),
           Math.round((expense.amountClp || 0) * 100),
           expense.category,
@@ -58,6 +61,30 @@ export const ExpenseRepository = {
       return result.lastInsertRowId;
     } catch (error) {
       console.error('ExpenseRepository.create error:', error);
+      throw error;
+    }
+  },
+
+  async update(id: number, expense: Omit<Expense, 'id'>): Promise<void> {
+    try {
+      const db = await getDatabase();
+      await db.runAsync(
+        'UPDATE expenses SET wallet_id = ?, title = ?, description = ?, amount_original_cents = ?, amount_eur_cents = ?, amount_clp_cents = ?, category = ?, exchange_rate = ?, date = ? WHERE id = ?',
+        sanitizeParams([
+          expense.walletId,
+          expense.title,
+          expense.description || null,
+          Math.round((expense.amountOriginal || 0) * 100),
+          Math.round((expense.amountEur || 0) * 100),
+          Math.round((expense.amountClp || 0) * 100),
+          expense.category,
+          expense.exchangeRate,
+          expense.date,
+          id
+        ])
+      );
+    } catch (error) {
+      console.error('ExpenseRepository.update error:', error);
       throw error;
     }
   },
@@ -85,6 +112,20 @@ export const ExpenseRepository = {
       }));
     } catch (error) {
       console.error('ExpenseRepository.getByCategory error:', error);
+      throw error;
+    }
+  },
+
+  async countByWalletId(walletId: number): Promise<number> {
+    try {
+      const db = await getDatabase();
+      const result = await db.getFirstAsync<{ count: number }>(
+        'SELECT COUNT(*) as count FROM expenses WHERE wallet_id = ?',
+        sanitizeParams([walletId])
+      );
+      return result?.count || 0;
+    } catch (error) {
+      console.error('ExpenseRepository.countByWalletId error:', error);
       throw error;
     }
   }

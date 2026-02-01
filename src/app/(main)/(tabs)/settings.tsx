@@ -18,19 +18,45 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const router = useRouter();
-  const { exchangeRate, tripStartDate, initialBudgetEur } = useSelector((state: RootState) => state.settings);
+  const { exchangeRate, usdExchangeRate, tripStartDate, initialBudgetEur, initialBudgetClp } = useSelector((state: RootState) => state.settings);
 
   const [rate, setRate] = useState(exchangeRate.toString());
+  const [usdRate, setUsdRate] = useState(usdExchangeRate.toString());
+  const [budget, setBudget] = useState(initialBudgetEur.toString());
+  const [budgetClp, setBudgetClp] = useState(initialBudgetClp.toString());
 
   const handleUpdateRate = async () => {
     const rateNum = parseFloat(rate);
-    if (isNaN(rateNum) || rateNum <= 0) {
-      Alert.alert('Error', 'Por favor ingresa un tipo de cambio válido');
+    const usdRateNum = parseFloat(usdRate);
+    if (isNaN(rateNum) || rateNum <= 0 || isNaN(usdRateNum) || usdRateNum <= 0) {
+      Alert.alert('Error', 'Por favor ingresa tipos de cambio válidos');
       return;
     }
     await SettingsRepository.set('exchangeRate', rateNum.toString());
-    dispatch(setSettings({ exchangeRate: rateNum }));
-    Alert.alert('Éxito', 'Tipo de cambio actualizado');
+    await SettingsRepository.set('usdExchangeRate', usdRateNum.toString());
+    dispatch(setSettings({ exchangeRate: rateNum, usdExchangeRate: usdRateNum }));
+    Alert.alert('Éxito', 'Tipos de cambio actualizados');
+  };
+
+  const handleUpdateBudget = async () => {
+    const budgetNum = parseFloat(budget);
+    const budgetClpNum = parseFloat(budgetClp);
+    if (isNaN(budgetNum) || budgetNum < 0 || isNaN(budgetClpNum) || budgetClpNum < 0) {
+      Alert.alert('Error', 'Por favor ingresa un presupuesto válido');
+      return;
+    }
+    await SettingsRepository.set('initialBudgetEur', budgetNum.toString());
+    await SettingsRepository.set('initialBudgetClp', budgetClpNum.toString());
+    dispatch(setSettings({ initialBudgetEur: budgetNum, initialBudgetClp: budgetClpNum }));
+    Alert.alert('Éxito', 'Presupuesto inicial actualizado');
+  };
+
+  const onBudgetEurChange = (val: string) => {
+    setBudget(val);
+    const num = parseFloat(val);
+    if (!isNaN(num)) {
+      setBudgetClp((num * exchangeRate).toFixed(0));
+    }
   };
 
   const handleLogout = () => {
@@ -51,8 +77,14 @@ export default function SettingsScreen() {
             onChangeText={setRate}
             keyboardType="numeric"
           />
+          <Input
+            label="Tipo de cambio (1 EUR → USD)"
+            value={usdRate}
+            onChangeText={setUsdRate}
+            keyboardType="numeric"
+          />
           <Button
-            title="Actualizar tipo de cambio"
+            title="Actualizar tipos de cambio"
             onPress={handleUpdateRate}
             variant="secondary"
           />
@@ -63,9 +95,24 @@ export default function SettingsScreen() {
             <Typography variant="label">Fecha de inicio:</Typography>
             <Typography variant="body">{tripStartDate || 'No definida'}</Typography>
           </View>
-          <View style={[styles.infoRow, { marginTop: 12 }]}>
-            <Typography variant="label">Presupuesto inicial:</Typography>
-            <Typography variant="body">{initialBudgetEur} EUR</Typography>
+          <View style={{ marginTop: 16 }}>
+            <Input
+              label="Presupuesto inicial (EUR)"
+              value={budget}
+              onChangeText={onBudgetEurChange}
+              keyboardType="numeric"
+            />
+            <Input
+              label="Presupuesto inicial (CLP)"
+              value={budgetClp}
+              onChangeText={setBudgetClp}
+              keyboardType="numeric"
+            />
+            <Button
+              title="Actualizar presupuesto"
+              onPress={handleUpdateBudget}
+              variant="secondary"
+            />
           </View>
         </Card>
 

@@ -4,13 +4,15 @@ export interface User {
 }
 
 export type WalletType = 'cash' | 'card' | 'virtual_card' | 'credit';
+export type Currency = 'EUR' | 'USD' | 'CLP';
 
 export interface Wallet {
   id: number;
   userId: number;
   name: string;
   type: WalletType;
-  balanceEur: number;
+  currency: Currency;
+  balance: number;
   initialExchangeRate: number;
 }
 
@@ -20,6 +22,7 @@ export interface Expense {
   walletId: number;
   title: string;
   description?: string;
+  amountOriginal: number;
   amountEur: number;
   amountClp: number;
   category: string;
