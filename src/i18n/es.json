@@ -1,0 +1,52 @@
+{
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "add": "Añadir",
+    "eur": "EUR",
+    "clp": "CLP"
+  },
+  "auth": {
+    "login": "Iniciar Sesión",
+    "register": "Registrarse",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "welcome": "¡Bienvenido a EuroViaje!"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "initial_money": "Presupuesto Inicial",
+    "total_spent": "Total Gastado",
+    "available_balance": "Saldo Disponible"
+  },
+  "expenses": {
+    "title": "Gastos",
+    "add_expense": "Registrar Gasto",
+    "category": "Categoría",
+    "amount": "Monto",
+    "date": "Fecha",
+    "source": "Fuente de dinero"
+  },
+  "wallets": {
+    "title": "Billeteras",
+    "add_wallet": "Nueva Billetera",
+    "name": "Nombre",
+    "type": "Tipo",
+    "balance": "Saldo",
+    "cash": "Efectivo",
+    "card": "Tarjeta Física",
+    "virtual_card": "Tarjeta Virtual",
+    "credit": "Crédito"
+  },
+  "categories": {
+    "food": "Comida",
+    "transport": "Transporte",
+    "hotels": "Hoteles",
+    "supermarket": "Supermercado",
+    "health": "Salud / Hospital",
+    "leisure": "Ocio",
+    "others": "Otros"
+  }
+}
