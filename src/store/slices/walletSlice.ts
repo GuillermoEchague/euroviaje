@@ -27,10 +27,10 @@ const walletSlice = createSlice({
         state.wallets[index] = action.payload;
       }
     },
-    updateWalletBalance: (state, action: PayloadAction<{ id: number; balanceEur: number }>) => {
+    updateWalletBalance: (state, action: PayloadAction<{ id: number; balance: number }>) => {
       const wallet = state.wallets.find(w => w.id === action.payload.id);
       if (wallet) {
-        wallet.balanceEur = action.payload.balanceEur;
+        wallet.balance = action.payload.balance;
       }
     },
     removeWallet: (state, action: PayloadAction<number>) => {

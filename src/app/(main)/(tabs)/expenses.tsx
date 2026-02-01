@@ -33,12 +33,14 @@ export default function ExpensesScreen() {
   const { user } = useSelector((state: RootState) => state.auth);
   const { expenses } = useSelector((state: RootState) => state.expenses);
   const { wallets } = useSelector((state: RootState) => state.wallets);
-  const { exchangeRate } = useSelector((state: RootState) => state.settings);
+  const { exchangeRate, usdExchangeRate } = useSelector((state: RootState) => state.settings);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
+  const [amountEur, setAmountEur] = useState('');
+  const [amountClp, setAmountClp] = useState('');
   const [category, setCategory] = useState('others');
   const [walletId, setWalletId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -59,6 +61,8 @@ export default function ExpensesScreen() {
   const resetForm = () => {
     setTitle('');
     setAmount('');
+    setAmountEur('');
+    setAmountClp('');
     setCategory('others');
     setWalletId(null);
     setEditingExpense(null);
@@ -72,10 +76,42 @@ export default function ExpensesScreen() {
   const handleOpenEdit = (expense: Expense) => {
     setEditingExpense(expense);
     setTitle(expense.title);
-    setAmount(expense.amountEur.toString());
+    setAmount(expense.amountOriginal.toString());
+    setAmountEur(expense.amountEur.toString());
+    setAmountClp(expense.amountClp.toString());
     setCategory(expense.category);
     setWalletId(expense.walletId);
     setModalVisible(true);
+  };
+
+  const updateConversions = (value: string, wId: number | null) => {
+    const amt = parseFloat(value);
+    if (isNaN(amt)) return;
+
+    const wallet = wallets.find(w => w.id === wId);
+    if (!wallet) return;
+
+    if (wallet.currency === 'EUR') {
+      setAmountEur(value);
+      setAmountClp((amt * exchangeRate).toFixed(0));
+    } else if (wallet.currency === 'CLP') {
+      setAmountEur((amt / exchangeRate).toFixed(2));
+      setAmountClp(value);
+    } else if (wallet.currency === 'USD') {
+      const eur = amt / usdExchangeRate;
+      setAmountEur(eur.toFixed(2));
+      setAmountClp((eur * exchangeRate).toFixed(0));
+    }
+  };
+
+  const handleAmountChange = (value: string) => {
+    setAmount(value);
+    updateConversions(value, walletId);
+  };
+
+  const handleWalletSelect = (id: number) => {
+    setWalletId(id);
+    updateConversions(amount, id);
   };
 
   const handleSaveExpense = async () => {
@@ -84,7 +120,9 @@ export default function ExpensesScreen() {
       return;
     }
 
-    const amountEur = parseFloat(amount);
+    const amtOriginal = parseFloat(amount);
+    const amtEur = parseFloat(amountEur);
+    const amtClp = parseFloat(amountClp);
     const selectedWallet = wallets.find(w => w.id === walletId);
 
     if (!selectedWallet) return;
@@ -96,8 +134,9 @@ export default function ExpensesScreen() {
           ...editingExpense,
           walletId,
           title,
-          amountEur,
-          amountClp: amountEur * exchangeRate,
+          amountOriginal: amtOriginal,
+          amountEur: amtEur,
+          amountClp: amtClp,
           category,
           exchangeRate,
         };
@@ -107,30 +146,31 @@ export default function ExpensesScreen() {
 
         // Adjust wallet balances
         if (editingExpense.walletId === walletId) {
-          const diff = amountEur - editingExpense.amountEur;
-          const newBalance = selectedWallet.balanceEur - diff;
+          const diff = amtOriginal - editingExpense.amountOriginal;
+          const newBalance = selectedWallet.balance - diff;
           await WalletRepository.updateBalance(walletId, newBalance);
-          dispatch(updateWalletBalance({ id: walletId, balanceEur: newBalance }));
+          dispatch(updateWalletBalance({ id: walletId, balance: newBalance }));
         } else {
           // Refund old wallet
           const oldWallet = wallets.find(w => w.id === editingExpense.walletId);
           if (oldWallet) {
-            const oldWalletNewBalance = oldWallet.balanceEur + editingExpense.amountEur;
+            const oldWalletNewBalance = oldWallet.balance + editingExpense.amountOriginal;
             await WalletRepository.updateBalance(oldWallet.id, oldWalletNewBalance);
-            dispatch(updateWalletBalance({ id: oldWallet.id, balanceEur: oldWalletNewBalance }));
+            dispatch(updateWalletBalance({ id: oldWallet.id, balance: oldWalletNewBalance }));
           }
           // Charge new wallet
-          const newWalletNewBalance = selectedWallet.balanceEur - amountEur;
+          const newWalletNewBalance = selectedWallet.balance - amtOriginal;
           await WalletRepository.updateBalance(walletId, newWalletNewBalance);
-          dispatch(updateWalletBalance({ id: walletId, balanceEur: newWalletNewBalance }));
+          dispatch(updateWalletBalance({ id: walletId, balance: newWalletNewBalance }));
         }
       } else {
         const newExpense: Omit<Expense, 'id'> = {
           userId: user.id,
           walletId,
           title,
-          amountEur,
-          amountClp: amountEur * exchangeRate,
+          amountOriginal: amtOriginal,
+          amountEur: amtEur,
+          amountClp: amtClp,
           category,
           exchangeRate,
           date: new Date().toISOString()
@@ -140,9 +180,9 @@ export default function ExpensesScreen() {
         dispatch(addExpense({ ...newExpense, id }));
 
         // Update wallet balance
-        const newBalance = selectedWallet.balanceEur - amountEur;
+        const newBalance = selectedWallet.balance - amtOriginal;
         await WalletRepository.updateBalance(walletId, newBalance);
-        dispatch(updateWalletBalance({ id: walletId, balanceEur: newBalance }));
+        dispatch(updateWalletBalance({ id: walletId, balance: newBalance }));
       }
 
       setModalVisible(false);
@@ -172,9 +212,9 @@ export default function ExpensesScreen() {
               // Refund wallet
               const wallet = wallets.find(w => w.id === expense.walletId);
               if (wallet) {
-                const newBalance = wallet.balanceEur + expense.amountEur;
+                const newBalance = wallet.balance + expense.amountOriginal;
                 await WalletRepository.updateBalance(wallet.id, newBalance);
-                dispatch(updateWalletBalance({ id: wallet.id, balanceEur: newBalance }));
+                dispatch(updateWalletBalance({ id: wallet.id, balance: newBalance }));
               }
             } catch (error) {
               console.error(error);
@@ -288,12 +328,33 @@ export default function ExpensesScreen() {
               />
 
               <Input
-                label={t('expenses.amount') + ' (EUR)'}
+                label={t('expenses.amount') + (walletId ? ` (${wallets.find(w => w.id === walletId)?.currency})` : '')}
                 value={amount}
-                onChangeText={setAmount}
+                onChangeText={handleAmountChange}
                 placeholder="0.00"
                 keyboardType="numeric"
               />
+
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    label="Equivalente EUR"
+                    value={amountEur}
+                    onChangeText={setAmountEur}
+                    placeholder="0.00"
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    label="Equivalente CLP"
+                    value={amountClp}
+                    onChangeText={setAmountClp}
+                    placeholder="0"
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
 
               <Typography variant="label" style={{ marginBottom: 12 }}>{t('expenses.category')}</Typography>
               <View style={styles.categoryContainer}>
@@ -324,10 +385,10 @@ export default function ExpensesScreen() {
                   <TouchableOpacity
                     key={w.id}
                     style={[styles.walletSelectItem, walletId === w.id && styles.walletSelectItemActive]}
-                    onPress={() => setWalletId(w.id)}
+                    onPress={() => handleWalletSelect(w.id)}
                   >
                     <Typography variant="caption" color={walletId === w.id ? '#fff' : '#666'}>
-                      {w.name} ({formatCurrency(w.balanceEur, 'EUR')})
+                      {w.name} ({formatCurrency(w.balance, w.currency)})
                     </Typography>
                   </TouchableOpacity>
                 ))}

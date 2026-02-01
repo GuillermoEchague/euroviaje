@@ -1,15 +1,19 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface SettingsState {
-  exchangeRate: number;
+  exchangeRate: number; // EUR -> CLP
+  usdExchangeRate: number; // EUR -> USD
   tripStartDate: string | null;
   initialBudgetEur: number;
+  initialBudgetClp: number;
 }
 
 const initialState: SettingsState = {
-  exchangeRate: 1000, // Default value, will be updated by user
+  exchangeRate: 1000,
+  usdExchangeRate: 1.05,
   tripStartDate: null,
   initialBudgetEur: 0,
+  initialBudgetClp: 0,
 };
 
 const settingsSlice = createSlice({

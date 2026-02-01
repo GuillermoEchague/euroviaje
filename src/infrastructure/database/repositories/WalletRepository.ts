@@ -12,7 +12,8 @@ export const WalletRepository = {
         user_id: number;
         name: string;
         type: string;
-        balance_eur_cents: number;
+        currency: string;
+        balance_cents: number;
         initial_exchange_rate: number;
       }>('SELECT * FROM wallets WHERE user_id = ?', sanitizeParams([userId]));
 
@@ -21,7 +22,8 @@ export const WalletRepository = {
         userId: row.user_id,
         name: row.name,
         type: row.type as WalletType,
-        balanceEur: (row.balance_eur_cents || 0) / 100,
+        currency: row.currency as any,
+        balance: (row.balance_cents || 0) / 100,
         initialExchangeRate: row.initial_exchange_rate
       }));
     } catch (error) {
@@ -34,12 +36,13 @@ export const WalletRepository = {
     try {
       const db = await getDatabase();
       const result = await db.runAsync(
-        'INSERT INTO wallets (user_id, name, type, balance_eur_cents, initial_exchange_rate) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO wallets (user_id, name, type, currency, balance_cents, initial_exchange_rate) VALUES (?, ?, ?, ?, ?, ?)',
         sanitizeParams([
           wallet.userId,
           wallet.name,
           wallet.type,
-          Math.round((wallet.balanceEur || 0) * 100),
+          wallet.currency,
+          Math.round((wallet.balance || 0) * 100),
           wallet.initialExchangeRate
         ])
       );
@@ -54,11 +57,12 @@ export const WalletRepository = {
     try {
       const db = await getDatabase();
       await db.runAsync(
-        'UPDATE wallets SET name = ?, type = ?, balance_eur_cents = ?, initial_exchange_rate = ? WHERE id = ?',
+        'UPDATE wallets SET name = ?, type = ?, currency = ?, balance_cents = ?, initial_exchange_rate = ? WHERE id = ?',
         sanitizeParams([
           wallet.name,
           wallet.type,
-          Math.round((wallet.balanceEur || 0) * 100),
+          wallet.currency,
+          Math.round((wallet.balance || 0) * 100),
           wallet.initialExchangeRate,
           id
         ])
@@ -73,7 +77,7 @@ export const WalletRepository = {
     try {
       const db = await getDatabase();
       await db.runAsync(
-        'UPDATE wallets SET balance_eur_cents = ? WHERE id = ?',
+        'UPDATE wallets SET balance_cents = ? WHERE id = ?',
         sanitizeParams([Math.round((newBalance || 0) * 100), walletId])
       );
     } catch (error) {

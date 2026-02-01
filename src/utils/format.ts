@@ -1,8 +1,13 @@
-export const formatCurrency = (amount: number, currency: 'EUR' | 'CLP') => {
+export const formatCurrency = (amount: number, currency: 'EUR' | 'CLP' | 'USD') => {
   if (currency === 'EUR') {
     return new Intl.NumberFormat('de-DE', {
       style: 'currency',
       currency: 'EUR',
+    }).format(amount);
+  } else if (currency === 'USD') {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
     }).format(amount);
   } else {
     return new Intl.NumberFormat('es-CL', {

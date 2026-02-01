@@ -17,7 +17,7 @@ import Button from "../../../components/atoms/Button";
 import Input from "../../../components/atoms/Input";
 import { RootState } from "../../../store";
 import { formatCurrency } from "../../../utils/format";
-import { Wallet, WalletType } from "../../../domain/models";
+import { Wallet, WalletType, Currency } from "../../../domain/models";
 import { WalletRepository } from "../../../infrastructure/database/repositories/WalletRepository";
 import { ExpenseRepository } from "../../../infrastructure/database/repositories/ExpenseRepository";
 import { addWallet, updateWallet, removeWallet, setWallets } from "../../../store/slices/walletSlice";
@@ -27,19 +27,21 @@ export default function WalletsScreen() {
   const dispatch = useDispatch();
   const { user } = useSelector((state: RootState) => state.auth);
   const { wallets } = useSelector((state: RootState) => state.wallets);
-  const { exchangeRate } = useSelector((state: RootState) => state.settings);
+  const { exchangeRate, usdExchangeRate } = useSelector((state: RootState) => state.settings);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingWallet, setEditingWallet] = useState<Wallet | null>(null);
   const [name, setName] = useState("");
   const [balance, setBalance] = useState("");
   const [type, setType] = useState<WalletType>("cash");
+  const [currency, setCurrency] = useState<Currency>("EUR");
   const [loading, setLoading] = useState(false);
 
   const resetForm = () => {
     setName("");
     setBalance("");
     setType("cash");
+    setCurrency("EUR");
     setEditingWallet(null);
   };
 
@@ -51,8 +53,9 @@ export default function WalletsScreen() {
   const handleOpenEdit = (wallet: Wallet) => {
     setEditingWallet(wallet);
     setName(wallet.name);
-    setBalance(wallet.balanceEur.toString());
+    setBalance(wallet.balance.toString());
     setType(wallet.type);
+    setCurrency(wallet.currency);
     setModalVisible(true);
   };
 
@@ -69,7 +72,8 @@ export default function WalletsScreen() {
           ...editingWallet,
           name,
           type,
-          balanceEur: parseFloat(balance),
+          currency,
+          balance: parseFloat(balance),
         };
         await WalletRepository.update(editingWallet.id, updatedWallet);
         dispatch(updateWallet(updatedWallet));
@@ -78,7 +82,8 @@ export default function WalletsScreen() {
           userId: user.id,
           name,
           type,
-          balanceEur: parseFloat(balance),
+          currency,
+          balance: parseFloat(balance),
           initialExchangeRate: exchangeRate,
         };
 
@@ -203,7 +208,7 @@ export default function WalletsScreen() {
                   <View style={styles.walletDetails}>
                     <Typography variant="h3">{item.name}</Typography>
                     <Typography variant="caption" color="#666">
-                      {t(`wallets.${item.type}`)}
+                      {t(`wallets.${item.type}`)} • {item.currency}
                     </Typography>
                   </View>
                 </View>
@@ -211,15 +216,20 @@ export default function WalletsScreen() {
                   <Typography
                     variant="h3"
                     color={
-                      item.type === "credit" && item.balanceEur < 0
+                      item.type === "credit" && item.balance < 0
                         ? "#FF3B30"
                         : "#000"
                     }
                   >
-                    {formatCurrency(item.balanceEur, "EUR")}
+                    {formatCurrency(item.balance, item.currency)}
                   </Typography>
                   <Typography variant="caption" color="#999">
-                    {formatCurrency(item.balanceEur * exchangeRate, "CLP")}
+                    {item.currency === 'CLP'
+                      ? formatCurrency(item.balance / exchangeRate, "EUR")
+                      : item.currency === 'EUR'
+                      ? formatCurrency(item.balance * exchangeRate, "CLP")
+                      : formatCurrency((item.balance / usdExchangeRate) * exchangeRate, "CLP")
+                    }
                   </Typography>
                 </View>
               </Card>
@@ -258,7 +268,7 @@ export default function WalletsScreen() {
             />
 
             <Input
-              label={t("wallets.balance") + " (EUR)"}
+              label={t("wallets.balance")}
               value={balance}
               onChangeText={setBalance}
               placeholder="0.00"
@@ -281,6 +291,22 @@ export default function WalletsScreen() {
                   />
                 )
               )}
+            </View>
+
+            <Typography variant="label" style={{ marginBottom: 8 }}>
+              Moneda
+            </Typography>
+            <View style={styles.typeContainer}>
+              {(["EUR", "USD", "CLP"] as Currency[]).map((c) => (
+                <Button
+                  key={c}
+                  title={c}
+                  variant={currency === c ? "primary" : "outline"}
+                  onPress={() => setCurrency(c)}
+                  style={[styles.typeButton, { minWidth: "30%" }]}
+                  textStyle={{ fontSize: 12 }}
+                />
+              ))}
             </View>
 
             <View style={styles.modalButtons}>

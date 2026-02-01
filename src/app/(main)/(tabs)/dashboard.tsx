@@ -21,7 +21,7 @@ export default function DashboardScreen() {
   const { user } = useSelector((state: RootState) => state.auth);
   const { expenses } = useSelector((state: RootState) => state.expenses);
   const { wallets } = useSelector((state: RootState) => state.wallets);
-  const { exchangeRate, initialBudgetEur } = useSelector((state: RootState) => state.settings);
+  const { exchangeRate, initialBudgetEur, initialBudgetClp, usdExchangeRate } = useSelector((state: RootState) => state.settings);
 
   useEffect(() => {
     if (user) {
@@ -40,14 +40,36 @@ export default function DashboardScreen() {
   };
 
   const totals = useMemo(() => {
-    const spent = expenses.reduce((acc, curr) => acc + curr.amountEur, 0);
-    const balance = wallets.reduce((acc, curr) => acc + curr.balanceEur, 0);
+    const spentEur = expenses.reduce((acc, curr) => acc + curr.amountEur, 0);
+    const spentClp = expenses.reduce((acc, curr) => acc + curr.amountClp, 0);
+
+    // For balance, we need to convert all wallets to EUR and CLP
+    let balanceEur = 0;
+    let balanceClp = 0;
+
+    wallets.forEach(w => {
+      if (w.currency === 'EUR') {
+        balanceEur += w.balance;
+        balanceClp += w.balance * exchangeRate;
+      } else if (w.currency === 'CLP') {
+        balanceEur += w.balance / exchangeRate;
+        balanceClp += w.balance;
+      } else if (w.currency === 'USD') {
+        const eur = w.balance / usdExchangeRate;
+        balanceEur += eur;
+        balanceClp += eur * exchangeRate;
+      }
+    });
+
     return {
-      spent,
-      balance,
-      initial: initialBudgetEur
+      spentEur,
+      spentClp,
+      balanceEur,
+      balanceClp,
+      initialEur: initialBudgetEur,
+      initialClp: initialBudgetClp
     };
-  }, [expenses, wallets, initialBudgetEur]);
+  }, [expenses, wallets, initialBudgetEur, initialBudgetClp, exchangeRate, usdExchangeRate]);
 
   const chartData = useMemo(() => {
     const categoryTotals: Record<string, number> = {};
@@ -82,23 +104,23 @@ export default function DashboardScreen() {
         <Card style={styles.budgetCard}>
           <Typography variant="label" color="rgba(255,255,255,0.8)">{t('dashboard.initial_money')}</Typography>
           <Typography variant="h1" color="#FFFFFF" style={styles.budgetAmount}>
-            {formatCurrency(totals.initial, 'EUR')}
+            {formatCurrency(totals.initialEur, 'EUR')}
           </Typography>
           <Typography variant="caption" color="rgba(255,255,255,0.6)">
-            {formatCurrency(totals.initial * exchangeRate, 'CLP')}
+            {formatCurrency(totals.initialClp, 'CLP')}
           </Typography>
         </Card>
 
         <View style={styles.summaryRow}>
           <Card style={[styles.summaryCard, { flex: 1, marginRight: 8 }]}>
             <Typography variant="caption" color="#666" style={{ marginBottom: 4 }}>{t('dashboard.total_spent')}</Typography>
-            <Typography variant="h3" color="#FF3B30">{formatCurrency(totals.spent, 'EUR')}</Typography>
-            <Typography variant="caption" color="#999">{formatCurrency(totals.spent * exchangeRate, 'CLP')}</Typography>
+            <Typography variant="h3" color="#FF3B30">{formatCurrency(totals.spentEur, 'EUR')}</Typography>
+            <Typography variant="caption" color="#999">{formatCurrency(totals.spentClp, 'CLP')}</Typography>
           </Card>
           <Card style={[styles.summaryCard, { flex: 1, marginLeft: 8 }]}>
             <Typography variant="caption" color="#666" style={{ marginBottom: 4 }}>{t('dashboard.available_balance')}</Typography>
-            <Typography variant="h3" color="#4CD964">{formatCurrency(totals.balance, 'EUR')}</Typography>
-            <Typography variant="caption" color="#999">{formatCurrency(totals.balance * exchangeRate, 'CLP')}</Typography>
+            <Typography variant="h3" color="#4CD964">{formatCurrency(totals.balanceEur, 'EUR')}</Typography>
+            <Typography variant="caption" color="#999">{formatCurrency(totals.balanceClp, 'CLP')}</Typography>
           </Card>
         </View>
 
