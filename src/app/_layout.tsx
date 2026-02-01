@@ -7,7 +7,9 @@ import '../i18n';
 import { View, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SettingsRepository } from '../infrastructure/database/repositories/SettingsRepository';
+import { UserRepository } from '../infrastructure/database/repositories/UserRepository';
 import { setSettings } from '../store/slices/settingsSlice';
+import { setUser } from '../store/slices/authSlice';
 
 function AppInitializer({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -26,6 +28,17 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
             tripStartDate: settings.tripStartDate || null,
             initialBudgetEur: parseFloat(settings.initialBudgetEur) || 0,
           }));
+
+          // Restore session if exists
+          if (settings.currentUserId) {
+            const userId = parseInt(settings.currentUserId, 10);
+            if (!isNaN(userId)) {
+              const user = await UserRepository.findById(userId);
+              if (user) {
+                dispatch(setUser(user));
+              }
+            }
+          }
         }
 
         setReady(true);

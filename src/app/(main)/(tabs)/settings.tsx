@@ -59,7 +59,8 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await SettingsRepository.remove('currentUserId');
     dispatch(logout());
     router.replace('/(auth)/login');
   };
