@@ -19,6 +19,20 @@ export const UserRepository = {
     }
   },
 
+  async findById(id: number): Promise<User | null> {
+    try {
+      const db = await getDatabase();
+      const result = await db.getFirstAsync<{ id: number; email: string }>(
+        'SELECT id, email FROM users WHERE id = ?',
+        sanitizeParams([id])
+      );
+      return result ? { id: result.id, email: result.email } : null;
+    } catch (error) {
+      console.error('UserRepository.findById error:', error);
+      throw error;
+    }
+  },
+
   async create(email: string, password: string): Promise<number> {
     try {
       const db = await getDatabase();

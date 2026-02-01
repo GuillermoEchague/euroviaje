@@ -16,6 +16,19 @@ export const SettingsRepository = {
     }
   },
 
+  async remove(key: string): Promise<void> {
+    try {
+      const db = await getDatabase();
+      await db.runAsync(
+        'DELETE FROM settings WHERE key = ?',
+        sanitizeParams([key])
+      );
+    } catch (error) {
+      console.error('SettingsRepository.remove error:', error);
+      throw error;
+    }
+  },
+
   async get(key: string): Promise<string | null> {
     try {
       const db = await getDatabase();

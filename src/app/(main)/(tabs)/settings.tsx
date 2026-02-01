@@ -11,6 +11,8 @@ import Input from '../../../components/atoms/Input';
 import { RootState } from '../../../store';
 import { setSettings } from '../../../store/slices/settingsSlice';
 import { logout } from '../../../store/slices/authSlice';
+import { setExpenses } from '../../../store/slices/expenseSlice';
+import { setWallets } from '../../../store/slices/walletSlice';
 import { useRouter } from 'expo-router';
 import { SettingsRepository } from '../../../infrastructure/database/repositories/SettingsRepository';
 
@@ -59,8 +61,11 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await SettingsRepository.remove('currentUserId');
     dispatch(logout());
+    dispatch(setExpenses([]));
+    dispatch(setWallets([]));
     router.replace('/(auth)/login');
   };
 

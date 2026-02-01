@@ -8,6 +8,7 @@ import Input from '../../components/atoms/Input';
 import Button from '../../components/atoms/Button';
 import Typography from '../../components/atoms/Typography';
 import { UserRepository } from '../../infrastructure/database/repositories/UserRepository';
+import { SettingsRepository } from '../../infrastructure/database/repositories/SettingsRepository';
 import { setUser } from '../../store/slices/authSlice';
 
 export default function LoginScreen() {
@@ -29,6 +30,7 @@ export default function LoginScreen() {
     try {
       const user = await UserRepository.validatePassword(email, password);
       if (user) {
+        await SettingsRepository.set('currentUserId', user.id.toString());
         dispatch(setUser(user));
         router.replace('/(main)/(tabs)/dashboard');
       } else {

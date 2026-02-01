@@ -8,6 +8,7 @@ import Input from '../../components/atoms/Input';
 import Button from '../../components/atoms/Button';
 import Typography from '../../components/atoms/Typography';
 import { UserRepository } from '../../infrastructure/database/repositories/UserRepository';
+import { SettingsRepository } from '../../infrastructure/database/repositories/SettingsRepository';
 import { setUser } from '../../store/slices/authSlice';
 
 export default function RegisterScreen() {
@@ -40,6 +41,7 @@ export default function RegisterScreen() {
       }
 
       const userId = await UserRepository.create(email, password);
+      await SettingsRepository.set('currentUserId', userId.toString());
       dispatch(setUser({ id: userId, email }));
       router.replace('/(main)/onboarding');
     } catch (error) {
