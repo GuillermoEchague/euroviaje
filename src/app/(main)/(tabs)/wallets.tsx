@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, StyleSheet, FlatList, Modal, Alert, TouchableOpacity } from "react-native";
+import { View, StyleSheet, FlatList, Modal, Alert, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -254,77 +254,84 @@ export default function WalletsScreen() {
         transparent
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Typography variant="h2" style={styles.modalTitle}>
-              {editingWallet ? "Editar Billetera" : t("wallets.add_wallet")}
-            </Typography>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { maxHeight: '90%' }]}>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <Typography variant="h2" style={styles.modalTitle}>
+                  {editingWallet ? "Editar Billetera" : t("wallets.add_wallet")}
+                </Typography>
 
-            <Input
-              label={t("wallets.name")}
-              value={name}
-              onChangeText={setName}
-              placeholder="Ej. Efectivo Euros"
-            />
-
-            <Input
-              label={t("wallets.balance")}
-              value={balance}
-              onChangeText={setBalance}
-              placeholder="0.00"
-              keyboardType="numeric"
-            />
-
-            <Typography variant="label" style={{ marginBottom: 8 }}>
-              {t("wallets.type")}
-            </Typography>
-            <View style={styles.typeContainer}>
-              {(["cash", "card", "virtual_card", "credit"] as WalletType[]).map(
-                (t) => (
-                  <Button
-                    key={t}
-                    title={t}
-                    variant={type === t ? "primary" : "outline"}
-                    onPress={() => setType(t)}
-                    style={styles.typeButton}
-                    textStyle={{ fontSize: 12 }}
-                  />
-                )
-              )}
-            </View>
-
-            <Typography variant="label" style={{ marginBottom: 8 }}>
-              Moneda
-            </Typography>
-            <View style={styles.typeContainer}>
-              {(["EUR", "USD", "CLP"] as Currency[]).map((c) => (
-                <Button
-                  key={c}
-                  title={c}
-                  variant={currency === c ? "primary" : "outline"}
-                  onPress={() => setCurrency(c)}
-                  style={[styles.typeButton, { minWidth: "30%" }]}
-                  textStyle={{ fontSize: 12 }}
+                <Input
+                  label={t("wallets.name")}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Ej. Efectivo Euros"
                 />
-              ))}
-            </View>
 
-            <View style={styles.modalButtons}>
-              <Button
-                title={t("common.cancel")}
-                variant="outline"
-                onPress={() => setModalVisible(false)}
-                style={styles.modalButton}
-              />
-              <Button
-                title={t("common.save")}
-                onPress={handleSaveWallet}
-                loading={loading}
-                style={styles.modalButton}
-              />
+                <Input
+                  label={t("wallets.balance")}
+                  value={balance}
+                  onChangeText={setBalance}
+                  placeholder="0.00"
+                  keyboardType="numeric"
+                />
+
+                <Typography variant="label" style={{ marginBottom: 8 }}>
+                  {t("wallets.type")}
+                </Typography>
+                <View style={styles.typeContainer}>
+                  {(["cash", "card", "virtual_card", "credit"] as WalletType[]).map(
+                    (t) => (
+                      <Button
+                        key={t}
+                        title={t}
+                        variant={type === t ? "primary" : "outline"}
+                        onPress={() => setType(t)}
+                        style={styles.typeButton}
+                        textStyle={{ fontSize: 12 }}
+                      />
+                    )
+                  )}
+                </View>
+
+                <Typography variant="label" style={{ marginBottom: 8 }}>
+                  Moneda
+                </Typography>
+                <View style={styles.typeContainer}>
+                  {(["EUR", "USD", "CLP"] as Currency[]).map((c) => (
+                    <Button
+                      key={c}
+                      title={c}
+                      variant={currency === c ? "primary" : "outline"}
+                      onPress={() => setCurrency(c)}
+                      style={[styles.typeButton, { minWidth: "30%" }]}
+                      textStyle={{ fontSize: 12 }}
+                    />
+                  ))}
+                </View>
+
+                <View style={styles.modalButtons}>
+                  <Button
+                    title={t("common.cancel")}
+                    variant="outline"
+                    onPress={() => setModalVisible(false)}
+                    style={styles.modalButton}
+                  />
+                  <Button
+                    title={t("common.save")}
+                    onPress={handleSaveWallet}
+                    loading={loading}
+                    style={styles.modalButton}
+                  />
+                </View>
+              </ScrollView>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

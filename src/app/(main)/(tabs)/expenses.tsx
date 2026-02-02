@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, StyleSheet, FlatList, Modal, Alert, TouchableOpacity, ScrollView } from 'react-native';
+import { View, StyleSheet, FlatList, Modal, Alert, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -313,104 +313,109 @@ export default function ExpensesScreen() {
         transparent
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxHeight: '90%' }]}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Typography variant="h2" style={styles.modalTitle}>
-                {editingExpense ? 'Editar Gasto' : t('expenses.add_expense')}
-              </Typography>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { maxHeight: '90%' }]}>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <Typography variant="h2" style={styles.modalTitle}>
+                  {editingExpense ? 'Editar Gasto' : t('expenses.add_expense')}
+                </Typography>
 
-              <Input
-                label="Título"
-                value={title}
-                onChangeText={setTitle}
-                placeholder="Ej. Almuerzo en Roma"
-              />
+                <Input
+                  label="Título"
+                  value={title}
+                  onChangeText={setTitle}
+                  placeholder="Ej. Almuerzo en Roma"
+                />
 
-              <Input
-                label={t('expenses.amount') + (walletId ? ` (${wallets.find(w => w.id === walletId)?.currency})` : '')}
-                value={amount}
-                onChangeText={handleAmountChange}
-                placeholder="0.00"
-                keyboardType="numeric"
-              />
-
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <Input
-                    label="Equivalente EUR"
-                    value={amountEur}
-                    onChangeText={setAmountEur}
-                    placeholder="0.00"
-                    keyboardType="numeric"
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Input
-                    label="Equivalente CLP"
-                    value={amountClp}
-                    onChangeText={setAmountClp}
-                    placeholder="0"
-                    keyboardType="numeric"
-                  />
-                </View>
-              </View>
-
-              <Typography variant="label" style={{ marginBottom: 12 }}>{t('expenses.category')}</Typography>
-              <View style={styles.categoryContainer}>
-                {CATEGORIES.map((cat) => (
-                  <TouchableOpacity
-                    key={cat.id}
-                    style={[
-                      styles.categoryButton,
-                      category === cat.id && { backgroundColor: cat.color, borderColor: cat.color }
-                    ]}
-                    onPress={() => setCategory(cat.id)}
-                  >
-                    <cat.icon size={18} color={category === cat.id ? '#fff' : cat.color} />
-                    <Typography
-                      variant="caption"
-                      style={{ marginTop: 4 }}
-                      color={category === cat.id ? '#fff' : '#333'}
+                <Typography variant="label" style={{ marginBottom: 8 }}>{t('expenses.source')}</Typography>
+                <View style={styles.walletSelectContainer}>
+                  {wallets.map((w) => (
+                    <TouchableOpacity
+                      key={w.id}
+                      style={[styles.walletSelectItem, walletId === w.id && styles.walletSelectItemActive]}
+                      onPress={() => handleWalletSelect(w.id)}
                     >
-                      {t(`categories.${cat.id}`)}
-                    </Typography>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                      <Typography variant="caption" color={walletId === w.id ? '#fff' : '#666'}>
+                        {w.name} ({formatCurrency(w.balance, w.currency)})
+                      </Typography>
+                    </TouchableOpacity>
+                  ))}
+                </View>
 
-              <Typography variant="label" style={{ marginBottom: 8 }}>{t('expenses.source')}</Typography>
-              <View style={styles.walletSelectContainer}>
-                {wallets.map((w) => (
-                  <TouchableOpacity
-                    key={w.id}
-                    style={[styles.walletSelectItem, walletId === w.id && styles.walletSelectItemActive]}
-                    onPress={() => handleWalletSelect(w.id)}
-                  >
-                    <Typography variant="caption" color={walletId === w.id ? '#fff' : '#666'}>
-                      {w.name} ({formatCurrency(w.balance, w.currency)})
-                    </Typography>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                <Input
+                  label={t('expenses.amount') + (walletId ? ` (${wallets.find(w => w.id === walletId)?.currency})` : '')}
+                  value={amount}
+                  onChangeText={handleAmountChange}
+                  placeholder="0.00"
+                  keyboardType="numeric"
+                />
 
-              <View style={[styles.modalButtons, { marginTop: 24 }]}>
-                <Button
-                  title={t('common.cancel')}
-                  variant="outline"
-                  onPress={() => setModalVisible(false)}
-                  style={styles.modalButton}
-                />
-                <Button
-                  title={t('common.save')}
-                  onPress={handleSaveExpense}
-                  loading={loading}
-                  style={styles.modalButton}
-                />
-              </View>
-            </ScrollView>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Input
+                      label="Equivalente EUR"
+                      value={amountEur}
+                      onChangeText={setAmountEur}
+                      placeholder="0.00"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Input
+                      label="Equivalente CLP"
+                      value={amountClp}
+                      onChangeText={setAmountClp}
+                      placeholder="0"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+
+                <Typography variant="label" style={{ marginBottom: 12 }}>{t('expenses.category')}</Typography>
+                <View style={styles.categoryContainer}>
+                  {CATEGORIES.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[
+                        styles.categoryButton,
+                        category === cat.id && { backgroundColor: cat.color, borderColor: cat.color }
+                      ]}
+                      onPress={() => setCategory(cat.id)}
+                    >
+                      <cat.icon size={18} color={category === cat.id ? '#fff' : cat.color} />
+                      <Typography
+                        variant="caption"
+                        style={{ marginTop: 4 }}
+                        color={category === cat.id ? '#fff' : '#333'}
+                      >
+                        {t(`categories.${cat.id}`)}
+                      </Typography>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <View style={[styles.modalButtons, { marginTop: 24 }]}>
+                  <Button
+                    title={t('common.cancel')}
+                    variant="outline"
+                    onPress={() => setModalVisible(false)}
+                    style={styles.modalButton}
+                  />
+                  <Button
+                    title={t('common.save')}
+                    onPress={handleSaveExpense}
+                    loading={loading}
+                    style={styles.modalButton}
+                  />
+                </View>
+              </ScrollView>
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
