@@ -1,30 +1,57 @@
-import React, { useState, useMemo } from 'react';
-import { View, StyleSheet, FlatList, Modal, Alert, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { useSelector, useDispatch } from 'react-redux';
-import { useTranslation } from 'react-i18next';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Filter, Utensils, Train, Hotel, ShoppingCart, HeartPulse, Ticket, Package, Trash2, Edit2 } from 'lucide-react-native';
-import { Swipeable } from 'react-native-gesture-handler';
-import Typography from '../../../components/atoms/Typography';
-import Card from '../../../components/molecules/Card';
-import Button from '../../../components/atoms/Button';
-import Input from '../../../components/atoms/Input';
-import { RootState } from '../../../store';
-import { formatCurrency, formatDate } from '../../../utils/format';
-import { Expense } from '../../../domain/models';
-import { ExpenseRepository } from '../../../infrastructure/database/repositories/ExpenseRepository';
-import { WalletRepository } from '../../../infrastructure/database/repositories/WalletRepository';
-import { addExpense, updateExpense, removeExpense } from '../../../store/slices/expenseSlice';
-import { updateWalletBalance } from '../../../store/slices/walletSlice';
+import React, { useState, useMemo } from "react";
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  Modal,
+  Alert,
+  TouchableOpacity,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Switch,
+} from "react-native";
+import { useSelector, useDispatch } from "react-redux";
+import { useTranslation } from "react-i18next";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  Plus,
+  Filter,
+  Utensils,
+  Train,
+  Hotel,
+  ShoppingCart,
+  HeartPulse,
+  Ticket,
+  Package,
+  Trash2,
+  Edit2,
+} from "lucide-react-native";
+import { Swipeable } from "react-native-gesture-handler";
+import Typography from "../../../components/atoms/Typography";
+import Card from "../../../components/molecules/Card";
+import Button from "../../../components/atoms/Button";
+import Input from "../../../components/atoms/Input";
+import { RootState } from "../../../store";
+import { formatCurrency, formatDate } from "../../../utils/format";
+import { Expense } from "../../../domain/models";
+import { ExpenseRepository } from "../../../infrastructure/database/repositories/ExpenseRepository";
+import { WalletRepository } from "../../../infrastructure/database/repositories/WalletRepository";
+import {
+  addExpense,
+  updateExpense,
+  removeExpense,
+} from "../../../store/slices/expenseSlice";
+import { updateWalletBalance } from "../../../store/slices/walletSlice";
 
 const CATEGORIES = [
-  { id: 'food', icon: Utensils, color: '#FF9500' },
-  { id: 'transport', icon: Train, color: '#5856D6' },
-  { id: 'hotels', icon: Hotel, color: '#007AFF' },
-  { id: 'supermarket', icon: ShoppingCart, color: '#4CD964' },
-  { id: 'health', icon: HeartPulse, color: '#FF3B30' },
-  { id: 'leisure', icon: Ticket, color: '#FF2D55' },
-  { id: 'others', icon: Package, color: '#8E8E93' },
+  { id: "food", icon: Utensils, color: "#FF9500" },
+  { id: "transport", icon: Train, color: "#5856D6" },
+  { id: "hotels", icon: Hotel, color: "#007AFF" },
+  { id: "supermarket", icon: ShoppingCart, color: "#4CD964" },
+  { id: "health", icon: HeartPulse, color: "#FF3B30" },
+  { id: "leisure", icon: Ticket, color: "#FF2D55" },
+  { id: "others", icon: Package, color: "#8E8E93" },
 ];
 
 export default function ExpensesScreen() {
@@ -33,38 +60,50 @@ export default function ExpensesScreen() {
   const { user } = useSelector((state: RootState) => state.auth);
   const { expenses } = useSelector((state: RootState) => state.expenses);
   const { wallets } = useSelector((state: RootState) => state.wallets);
-  const { exchangeRate, usdExchangeRate } = useSelector((state: RootState) => state.settings);
+  const { exchangeRate, usdExchangeRate } = useSelector(
+    (state: RootState) => state.settings
+  );
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [title, setTitle] = useState('');
-  const [amount, setAmount] = useState('');
-  const [amountEur, setAmountEur] = useState('');
-  const [amountClp, setAmountClp] = useState('');
-  const [category, setCategory] = useState('others');
+  const [title, setTitle] = useState("");
+  const [amount, setAmount] = useState("");
+  const [amountEur, setAmountEur] = useState("");
+  const [amountClp, setAmountClp] = useState("");
+  const [category, setCategory] = useState("others");
   const [walletId, setWalletId] = useState<number | null>(null);
+  const [isPreTrip, setIsPreTrip] = useState(false);
   const [loading, setLoading] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
 
   const filteredExpenses = useMemo(() => {
     if (!filterCategory) return expenses;
-    return expenses.filter(e => e.category === filterCategory);
+    return expenses.filter((e) => e.category === filterCategory);
   }, [expenses, filterCategory]);
 
-  const CategoryIcon = ({ categoryId, size = 20, color = '#666' }: { categoryId: string, size?: number, color?: string }) => {
-    const cat = CATEGORIES.find(c => c.id === categoryId);
+  const CategoryIcon = ({
+    categoryId,
+    size = 20,
+    color = "#666",
+  }: {
+    categoryId: string;
+    size?: number;
+    color?: string;
+  }) => {
+    const cat = CATEGORIES.find((c) => c.id === categoryId);
     if (!cat) return <Package size={size} color={color} />;
     const Icon = cat.icon;
     return <Icon size={size} color={color} />;
   };
 
   const resetForm = () => {
-    setTitle('');
-    setAmount('');
-    setAmountEur('');
-    setAmountClp('');
-    setCategory('others');
+    setTitle("");
+    setAmount("");
+    setAmountEur("");
+    setAmountClp("");
+    setCategory("others");
     setWalletId(null);
+    setIsPreTrip(false);
     setEditingExpense(null);
   };
 
@@ -81,6 +120,7 @@ export default function ExpensesScreen() {
     setAmountClp(expense.amountClp.toString());
     setCategory(expense.category);
     setWalletId(expense.walletId);
+    setIsPreTrip(!!expense.isPreTrip);
     setModalVisible(true);
   };
 
@@ -88,16 +128,16 @@ export default function ExpensesScreen() {
     const amt = parseFloat(value);
     if (isNaN(amt)) return;
 
-    const wallet = wallets.find(w => w.id === wId);
+    const wallet = wallets.find((w) => w.id === wId);
     if (!wallet) return;
 
-    if (wallet.currency === 'EUR') {
+    if (wallet.currency === "EUR") {
       setAmountEur(value);
       setAmountClp((amt * exchangeRate).toFixed(0));
-    } else if (wallet.currency === 'CLP') {
+    } else if (wallet.currency === "CLP") {
       setAmountEur((amt / exchangeRate).toFixed(2));
       setAmountClp(value);
-    } else if (wallet.currency === 'USD') {
+    } else if (wallet.currency === "USD") {
       const eur = amt / usdExchangeRate;
       setAmountEur(eur.toFixed(2));
       setAmountClp((eur * exchangeRate).toFixed(0));
@@ -116,14 +156,14 @@ export default function ExpensesScreen() {
 
   const handleSaveExpense = async () => {
     if (!user || !title || !amount || !walletId) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+      Alert.alert("Error", "Por favor completa todos los campos");
       return;
     }
 
     const amtOriginal = parseFloat(amount);
     const amtEur = parseFloat(amountEur);
     const amtClp = parseFloat(amountClp);
-    const selectedWallet = wallets.find(w => w.id === walletId);
+    const selectedWallet = wallets.find((w) => w.id === walletId);
 
     if (!selectedWallet) return;
 
@@ -139,6 +179,7 @@ export default function ExpensesScreen() {
           amountClp: amtClp,
           category,
           exchangeRate,
+          isPreTrip,
         };
 
         await ExpenseRepository.update(editingExpense.id, updatedExpense);
@@ -152,19 +193,32 @@ export default function ExpensesScreen() {
           dispatch(updateWalletBalance({ id: walletId, balance: newBalance }));
         } else {
           // Refund old wallet
-          const oldWallet = wallets.find(w => w.id === editingExpense.walletId);
+          const oldWallet = wallets.find(
+            (w) => w.id === editingExpense.walletId
+          );
           if (oldWallet) {
-            const oldWalletNewBalance = oldWallet.balance + editingExpense.amountOriginal;
-            await WalletRepository.updateBalance(oldWallet.id, oldWalletNewBalance);
-            dispatch(updateWalletBalance({ id: oldWallet.id, balance: oldWalletNewBalance }));
+            const oldWalletNewBalance =
+              oldWallet.balance + editingExpense.amountOriginal;
+            await WalletRepository.updateBalance(
+              oldWallet.id,
+              oldWalletNewBalance
+            );
+            dispatch(
+              updateWalletBalance({
+                id: oldWallet.id,
+                balance: oldWalletNewBalance,
+              })
+            );
           }
           // Charge new wallet
           const newWalletNewBalance = selectedWallet.balance - amtOriginal;
           await WalletRepository.updateBalance(walletId, newWalletNewBalance);
-          dispatch(updateWalletBalance({ id: walletId, balance: newWalletNewBalance }));
+          dispatch(
+            updateWalletBalance({ id: walletId, balance: newWalletNewBalance })
+          );
         }
       } else {
-        const newExpense: Omit<Expense, 'id'> = {
+        const newExpense: Omit<Expense, "id"> = {
           userId: user.id,
           walletId,
           title,
@@ -173,7 +227,8 @@ export default function ExpensesScreen() {
           amountClp: amtClp,
           category,
           exchangeRate,
-          date: new Date().toISOString()
+          date: new Date().toISOString(),
+          isPreTrip,
         };
 
         const id = await ExpenseRepository.create(newExpense);
@@ -189,7 +244,7 @@ export default function ExpensesScreen() {
       resetForm();
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'No se pudo guardar el gasto');
+      Alert.alert("Error", "No se pudo guardar el gasto");
     } finally {
       setLoading(false);
     }
@@ -197,31 +252,33 @@ export default function ExpensesScreen() {
 
   const handleDeleteExpense = async (expense: Expense) => {
     Alert.alert(
-      'Eliminar gasto',
-      '¿Estás seguro de que deseas eliminar este gasto?',
+      "Eliminar gasto",
+      "¿Estás seguro de que deseas eliminar este gasto?",
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: "Cancelar", style: "cancel" },
         {
-          text: 'Eliminar',
-          style: 'destructive',
+          text: "Eliminar",
+          style: "destructive",
           onPress: async () => {
             try {
               await ExpenseRepository.delete(expense.id);
               dispatch(removeExpense(expense.id));
 
               // Refund wallet
-              const wallet = wallets.find(w => w.id === expense.walletId);
+              const wallet = wallets.find((w) => w.id === expense.walletId);
               if (wallet) {
                 const newBalance = wallet.balance + expense.amountOriginal;
                 await WalletRepository.updateBalance(wallet.id, newBalance);
-                dispatch(updateWalletBalance({ id: wallet.id, balance: newBalance }));
+                dispatch(
+                  updateWalletBalance({ id: wallet.id, balance: newBalance })
+                );
               }
             } catch (error) {
               console.error(error);
-              Alert.alert('Error', 'No se pudo eliminar el gasto');
+              Alert.alert("Error", "No se pudo eliminar el gasto");
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -230,13 +287,13 @@ export default function ExpensesScreen() {
     return (
       <View style={styles.rightActions}>
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: '#007AFF' }]}
+          style={[styles.actionButton, { backgroundColor: "#007AFF" }]}
           onPress={() => handleOpenEdit(expense)}
         >
           <Edit2 size={20} color="#fff" />
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: '#FF3B30' }]}
+          style={[styles.actionButton, { backgroundColor: "#FF3B30" }]}
           onPress={() => handleDeleteExpense(expense)}
         >
           <Trash2 size={20} color="#fff" />
@@ -246,31 +303,49 @@ export default function ExpensesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
-        <Typography variant="h1">{t('expenses.title')}</Typography>
+        <Typography variant="h1">{t("expenses.title")}</Typography>
         <Button
-          title={t('common.add')}
+          title={t("common.add")}
           onPress={handleOpenAdd}
           style={styles.addButton}
           textStyle={{ fontSize: 14 }}
         />
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterBar}
+      >
         <TouchableOpacity
-          style={[styles.filterItem, !filterCategory && styles.filterItemActive]}
+          style={[
+            styles.filterItem,
+            !filterCategory && styles.filterItemActive,
+          ]}
           onPress={() => setFilterCategory(null)}
         >
-          <Typography variant="caption" color={!filterCategory ? '#fff' : '#666'}>Todos</Typography>
+          <Typography
+            variant="caption"
+            color={!filterCategory ? "#fff" : "#666"}
+          >
+            Todos
+          </Typography>
         </TouchableOpacity>
-        {CATEGORIES.map(cat => (
+        {CATEGORIES.map((cat) => (
           <TouchableOpacity
             key={cat.id}
-            style={[styles.filterItem, filterCategory === cat.id && styles.filterItemActive]}
+            style={[
+              styles.filterItem,
+              filterCategory === cat.id && styles.filterItemActive,
+            ]}
             onPress={() => setFilterCategory(cat.id)}
           >
-            <Typography variant="caption" color={filterCategory === cat.id ? '#fff' : '#666'}>
+            <Typography
+              variant="caption"
+              color={filterCategory === cat.id ? "#fff" : "#666"}
+            >
               {t(`categories.${cat.id}`)}
             </Typography>
           </TouchableOpacity>
@@ -285,7 +360,10 @@ export default function ExpensesScreen() {
           <Swipeable renderRightActions={() => renderRightActions(item)}>
             <Card style={styles.expenseCard}>
               <View style={styles.expenseIconContainer}>
-                <CategoryIcon categoryId={item.category} color={CATEGORIES.find(c => c.id === item.category)?.color} />
+                <CategoryIcon
+                  categoryId={item.category}
+                  color={CATEGORIES.find((c) => c.id === item.category)?.color}
+                />
               </View>
               <View style={styles.expenseInfo}>
                 <Typography variant="h3">{item.title}</Typography>
@@ -294,14 +372,23 @@ export default function ExpensesScreen() {
                 </Typography>
               </View>
               <View style={styles.expenseAmount}>
-                <Typography variant="h3" color="#FF3B30">-{formatCurrency(item.amountEur, 'EUR')}</Typography>
-                <Typography variant="caption" color="#999">-{formatCurrency(item.amountClp, 'CLP')}</Typography>
+                <Typography variant="h3" color="#FF3B30">
+                  -{formatCurrency(item.amountEur, "EUR")}
+                </Typography>
+                <Typography variant="caption" color="#999">
+                  -{formatCurrency(item.amountClp, "CLP")}
+                </Typography>
               </View>
             </Card>
           </Swipeable>
         )}
         ListEmptyComponent={
-          <Typography variant="body" color="#999" align="center" style={{ marginTop: 40 }}>
+          <Typography
+            variant="body"
+            color="#999"
+            align="center"
+            style={{ marginTop: 40 }}
+          >
             No hay gastos registrados
           </Typography>
         }
@@ -314,14 +401,14 @@ export default function ExpensesScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={{ flex: 1 }}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalContent, { maxHeight: '90%' }]}>
+            <View style={[styles.modalContent, { maxHeight: "90%" }]}>
               <ScrollView showsVerticalScrollIndicator={false}>
                 <Typography variant="h2" style={styles.modalTitle}>
-                  {editingExpense ? 'Editar Gasto' : t('expenses.add_expense')}
+                  {editingExpense ? "Editar Gasto" : t("expenses.add_expense")}
                 </Typography>
 
                 <Input
@@ -331,15 +418,35 @@ export default function ExpensesScreen() {
                   placeholder="Ej. Almuerzo en Roma"
                 />
 
-                <Typography variant="label" style={{ marginBottom: 8 }}>{t('expenses.source')}</Typography>
+                <View style={styles.switchContainer}>
+                  <Typography variant="body">
+                    ¿Gasto previo al viaje?
+                  </Typography>
+                  <Switch
+                    value={isPreTrip}
+                    onValueChange={setIsPreTrip}
+                    trackColor={{ false: "#767577", true: "#81b0ff" }}
+                    thumbColor={isPreTrip ? "#007AFF" : "#f4f3f4"}
+                  />
+                </View>
+
+                <Typography variant="label" style={{ marginBottom: 8 }}>
+                  {t("expenses.source")}
+                </Typography>
                 <View style={styles.walletSelectContainer}>
                   {wallets.map((w) => (
                     <TouchableOpacity
                       key={w.id}
-                      style={[styles.walletSelectItem, walletId === w.id && styles.walletSelectItemActive]}
+                      style={[
+                        styles.walletSelectItem,
+                        walletId === w.id && styles.walletSelectItemActive,
+                      ]}
                       onPress={() => handleWalletSelect(w.id)}
                     >
-                      <Typography variant="caption" color={walletId === w.id ? '#fff' : '#666'}>
+                      <Typography
+                        variant="caption"
+                        color={walletId === w.id ? "#fff" : "#666"}
+                      >
                         {w.name} ({formatCurrency(w.balance, w.currency)})
                       </Typography>
                     </TouchableOpacity>
@@ -347,14 +454,19 @@ export default function ExpensesScreen() {
                 </View>
 
                 <Input
-                  label={t('expenses.amount') + (walletId ? ` (${wallets.find(w => w.id === walletId)?.currency})` : '')}
+                  label={
+                    t("expenses.amount") +
+                    (walletId
+                      ? ` (${wallets.find((w) => w.id === walletId)?.currency})`
+                      : "")
+                  }
                   value={amount}
                   onChangeText={handleAmountChange}
                   placeholder="0.00"
                   keyboardType="numeric"
                 />
 
-                <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flexDirection: "row", gap: 12 }}>
                   <View style={{ flex: 1 }}>
                     <Input
                       label="Equivalente EUR"
@@ -375,22 +487,30 @@ export default function ExpensesScreen() {
                   </View>
                 </View>
 
-                <Typography variant="label" style={{ marginBottom: 12 }}>{t('expenses.category')}</Typography>
+                <Typography variant="label" style={{ marginBottom: 12 }}>
+                  {t("expenses.category")}
+                </Typography>
                 <View style={styles.categoryContainer}>
                   {CATEGORIES.map((cat) => (
                     <TouchableOpacity
                       key={cat.id}
                       style={[
                         styles.categoryButton,
-                        category === cat.id && { backgroundColor: cat.color, borderColor: cat.color }
+                        category === cat.id && {
+                          backgroundColor: cat.color,
+                          borderColor: cat.color,
+                        },
                       ]}
                       onPress={() => setCategory(cat.id)}
                     >
-                      <cat.icon size={18} color={category === cat.id ? '#fff' : cat.color} />
+                      <cat.icon
+                        size={18}
+                        color={category === cat.id ? "#fff" : cat.color}
+                      />
                       <Typography
                         variant="caption"
                         style={{ marginTop: 4 }}
-                        color={category === cat.id ? '#fff' : '#333'}
+                        color={category === cat.id ? "#fff" : "#333"}
                       >
                         {t(`categories.${cat.id}`)}
                       </Typography>
@@ -400,13 +520,13 @@ export default function ExpensesScreen() {
 
                 <View style={[styles.modalButtons, { marginTop: 24 }]}>
                   <Button
-                    title={t('common.cancel')}
+                    title={t("common.cancel")}
                     variant="outline"
                     onPress={() => setModalVisible(false)}
                     style={styles.modalButton}
                   />
                   <Button
-                    title={t('common.save')}
+                    title={t("common.save")}
                     onPress={handleSaveExpense}
                     loading={loading}
                     style={styles.modalButton}
@@ -424,12 +544,12 @@ export default function ExpensesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: "#F2F2F7",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 24,
     paddingBottom: 12,
   },
@@ -447,57 +567,57 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: "#E5E5EA",
     marginRight: 8,
     height: 32,
   },
   filterItemActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: "#007AFF",
   },
   list: {
     padding: 24,
     paddingTop: 0,
   },
   expenseCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: 0,
     borderRadius: 0,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: "#E5E5EA",
   },
   rightActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     width: 140,
   },
   actionButton: {
     width: 70,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   expenseIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F2F2F7',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#F2F2F7",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
   expenseInfo: {
     flex: 1,
   },
   expenseAmount: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
     marginLeft: 12,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -507,26 +627,26 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   categoryContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
     marginBottom: 24,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   categoryButton: {
-    width: '22%',
+    width: "22%",
     aspectRatio: 1,
     borderRadius: 12,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: "#F2F2F7",
     borderWidth: 1,
-    borderColor: '#E5E5EA',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: "#E5E5EA",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 4,
   },
   walletSelectContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
     marginBottom: 20,
   },
@@ -534,16 +654,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: "#F2F2F7",
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: "#E5E5EA",
   },
   walletSelectItemActive: {
-    backgroundColor: '#5856D6',
-    borderColor: '#5856D6',
+    backgroundColor: "#5856D6",
+    borderColor: "#5856D6",
+  },
+  switchContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    paddingHorizontal: 4,
   },
   modalButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   modalButton: {

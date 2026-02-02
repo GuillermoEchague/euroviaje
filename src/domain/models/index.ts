@@ -3,8 +3,8 @@ export interface User {
   email: string;
 }
 
-export type WalletType = 'cash' | 'card' | 'virtual_card' | 'credit';
-export type Currency = 'EUR' | 'USD' | 'CLP';
+export type WalletType = "cash" | "card" | "virtual_card" | "credit";
+export type Currency = "EUR" | "USD" | "CLP";
 
 export interface Wallet {
   id: number;
@@ -28,6 +28,7 @@ export interface Expense {
   category: string;
   exchangeRate: number;
   date: string;
+  isPreTrip?: boolean;
 }
 
 export interface ExchangeRate {
