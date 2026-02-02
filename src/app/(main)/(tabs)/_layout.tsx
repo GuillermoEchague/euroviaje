@@ -1,5 +1,11 @@
 import { Tabs } from 'expo-router';
-import { LayoutDashboard, ReceiptText, Wallet, Settings } from 'lucide-react-native';
+import {
+  LayoutDashboard,
+  ReceiptText,
+  Wallet,
+  Settings,
+  Briefcase,
+} from 'lucide-react-native';
 
 export default function TabsLayout() {
   return (
@@ -23,6 +29,13 @@ export default function TabsLayout() {
         options={{
           title: 'Billeteras',
           tabBarIcon: ({ color }) => <Wallet size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="luggage"
+        options={{
+          title: 'Equipaje',
+          tabBarIcon: ({ color }) => <Briefcase size={24} color={color} />,
         }}
       />
       <Tabs.Screen

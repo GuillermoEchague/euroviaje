@@ -48,5 +48,28 @@
     "health": "Salud / Hospital",
     "leisure": "Ocio",
     "others": "Otros"
+  },
+  "luggage": {
+    "title": "Equipaje",
+    "add_item": "Nuevo Artículo",
+    "edit_item": "Editar Artículo",
+    "clothing": "Ropa",
+    "toiletry": "Aseo",
+    "clean": "Limpias",
+    "dirty": "Sucias",
+    "wash_all": "Lavar Todo",
+    "wash_category": "Lavar Categoría",
+    "summary": "Resumen de Equipaje",
+    "to_wash": "Por Lavar",
+    "to_buy": "Por Comprar",
+    "name": "Nombre",
+    "type": "Tipo",
+    "clean_quantity": "Cantidad Limpia",
+    "dirty_quantity": "Cantidad Sucia",
+    "has_item": "¿Tengo el artículo?",
+    "alerts": {
+      "low_clean": "¡Poca ropa limpia!",
+      "missing_item": "Falta artículo"
+    }
   }
 }

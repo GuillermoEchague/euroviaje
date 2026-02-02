@@ -35,3 +35,15 @@ export interface ExchangeRate {
   rate: number;
   updatedAt: string;
 }
+
+export type LuggageType = "clothing" | "toiletry";
+
+export interface LuggageItem {
+  id: number;
+  userId: number;
+  name: string;
+  type: LuggageType;
+  cleanQuantity: number;
+  dirtyQuantity: number;
+  hasItem: boolean;
+}
