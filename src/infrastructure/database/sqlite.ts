@@ -97,5 +97,18 @@ export const initDatabase = async () => {
     );
   `);
 
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS luggage_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      clean_quantity INTEGER DEFAULT 0,
+      dirty_quantity INTEGER DEFAULT 0,
+      has_item INTEGER DEFAULT 1,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    );
+  `);
+
   return db;
 };
