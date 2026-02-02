@@ -1,7 +1,7 @@
-import * as SQLite from 'expo-sqlite';
-import { getDatabase } from '../sqlite';
-import { Expense } from '../../../domain/models';
-import { sanitizeParams } from '../../../utils/sqlite-helper';
+import * as SQLite from "expo-sqlite";
+import { getDatabase } from "../sqlite";
+import { Expense } from "../../../domain/models";
+import { sanitizeParams } from "../../../utils/sqlite-helper";
 
 export const ExpenseRepository = {
   async getAllByUserId(userId: number): Promise<Expense[]> {
@@ -19,9 +19,13 @@ export const ExpenseRepository = {
         category: string;
         exchange_rate: number;
         date: string;
-      }>('SELECT * FROM expenses WHERE user_id = ? ORDER BY date DESC', sanitizeParams([userId]));
+        is_pre_trip: number;
+      }>(
+        "SELECT * FROM expenses WHERE user_id = ? ORDER BY date DESC",
+        sanitizeParams([userId])
+      );
 
-      return results.map(row => ({
+      return results.map((row) => ({
         id: row.id,
         userId: row.user_id,
         walletId: row.wallet_id,
@@ -32,19 +36,20 @@ export const ExpenseRepository = {
         amountClp: (row.amount_clp_cents || 0) / 100,
         category: row.category,
         exchangeRate: row.exchange_rate,
-        date: row.date
+        date: row.date,
+        isPreTrip: row.is_pre_trip === 1,
       }));
     } catch (error) {
-      console.error('ExpenseRepository.getAllByUserId error:', error);
+      console.error("ExpenseRepository.getAllByUserId error:", error);
       throw error;
     }
   },
 
-  async create(expense: Omit<Expense, 'id'>): Promise<number> {
+  async create(expense: Omit<Expense, "id">): Promise<number> {
     try {
       const db = await getDatabase();
       const result = await db.runAsync(
-        'INSERT INTO expenses (user_id, wallet_id, title, description, amount_original_cents, amount_eur_cents, amount_clp_cents, category, exchange_rate, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        "INSERT INTO expenses (user_id, wallet_id, title, description, amount_original_cents, amount_eur_cents, amount_clp_cents, category, exchange_rate, date, is_pre_trip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         sanitizeParams([
           expense.userId,
           expense.walletId,
@@ -55,21 +60,22 @@ export const ExpenseRepository = {
           Math.round((expense.amountClp || 0) * 100),
           expense.category,
           expense.exchangeRate,
-          expense.date
+          expense.date,
+          expense.isPreTrip ? 1 : 0,
         ])
       );
       return result.lastInsertRowId;
     } catch (error) {
-      console.error('ExpenseRepository.create error:', error);
+      console.error("ExpenseRepository.create error:", error);
       throw error;
     }
   },
 
-  async update(id: number, expense: Omit<Expense, 'id'>): Promise<void> {
+  async update(id: number, expense: Omit<Expense, "id">): Promise<void> {
     try {
       const db = await getDatabase();
       await db.runAsync(
-        'UPDATE expenses SET wallet_id = ?, title = ?, description = ?, amount_original_cents = ?, amount_eur_cents = ?, amount_clp_cents = ?, category = ?, exchange_rate = ?, date = ? WHERE id = ?',
+        "UPDATE expenses SET wallet_id = ?, title = ?, description = ?, amount_original_cents = ?, amount_eur_cents = ?, amount_clp_cents = ?, category = ?, exchange_rate = ?, date = ?, is_pre_trip = ? WHERE id = ?",
         sanitizeParams([
           expense.walletId,
           expense.title,
@@ -80,11 +86,12 @@ export const ExpenseRepository = {
           expense.category,
           expense.exchangeRate,
           expense.date,
-          id
+          expense.isPreTrip ? 1 : 0,
+          id,
         ])
       );
     } catch (error) {
-      console.error('ExpenseRepository.update error:', error);
+      console.error("ExpenseRepository.update error:", error);
       throw error;
     }
   },
@@ -92,26 +99,34 @@ export const ExpenseRepository = {
   async delete(expenseId: number): Promise<void> {
     try {
       const db = await getDatabase();
-      await db.runAsync('DELETE FROM expenses WHERE id = ?', sanitizeParams([expenseId]));
+      await db.runAsync(
+        "DELETE FROM expenses WHERE id = ?",
+        sanitizeParams([expenseId])
+      );
     } catch (error) {
-      console.error('ExpenseRepository.delete error:', error);
+      console.error("ExpenseRepository.delete error:", error);
       throw error;
     }
   },
 
-  async getByCategory(userId: number): Promise<{ category: string; total_eur: number }[]> {
+  async getByCategory(
+    userId: number
+  ): Promise<{ category: string; total_eur: number }[]> {
     try {
       const db = await getDatabase();
-      const results = await db.getAllAsync<{ category: string; total_eur_cents: number }>(
-        'SELECT category, SUM(amount_eur_cents) as total_eur_cents FROM expenses WHERE user_id = ? GROUP BY category',
+      const results = await db.getAllAsync<{
+        category: string;
+        total_eur_cents: number;
+      }>(
+        "SELECT category, SUM(amount_eur_cents) as total_eur_cents FROM expenses WHERE user_id = ? GROUP BY category",
         sanitizeParams([userId])
       );
-      return results.map(row => ({
+      return results.map((row) => ({
         category: row.category,
-        total_eur: (row.total_eur_cents || 0) / 100
+        total_eur: (row.total_eur_cents || 0) / 100,
       }));
     } catch (error) {
-      console.error('ExpenseRepository.getByCategory error:', error);
+      console.error("ExpenseRepository.getByCategory error:", error);
       throw error;
     }
   },
@@ -120,13 +135,13 @@ export const ExpenseRepository = {
     try {
       const db = await getDatabase();
       const result = await db.getFirstAsync<{ count: number }>(
-        'SELECT COUNT(*) as count FROM expenses WHERE wallet_id = ?',
+        "SELECT COUNT(*) as count FROM expenses WHERE wallet_id = ?",
         sanitizeParams([walletId])
       );
       return result?.count || 0;
     } catch (error) {
-      console.error('ExpenseRepository.countByWalletId error:', error);
+      console.error("ExpenseRepository.countByWalletId error:", error);
       throw error;
     }
-  }
+  },
 };

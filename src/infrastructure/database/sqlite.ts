@@ -1,6 +1,6 @@
-import * as SQLite from 'expo-sqlite';
+import * as SQLite from "expo-sqlite";
 
-export const dbName = 'euroviaje.db';
+export const dbName = "euroviaje.db";
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 
@@ -15,7 +15,7 @@ export const initDatabase = async () => {
   const db = await getDatabase();
 
   // Enable foreign keys
-  await db.execAsync('PRAGMA foreign_keys = ON;');
+  await db.execAsync("PRAGMA foreign_keys = ON;");
 
   // Create tables in sequence
   await db.execAsync(`
@@ -41,10 +41,14 @@ export const initDatabase = async () => {
 
   // Migration for wallets if needed
   try {
-    await db.execAsync('ALTER TABLE wallets ADD COLUMN currency TEXT NOT NULL DEFAULT "EUR";');
+    await db.execAsync(
+      'ALTER TABLE wallets ADD COLUMN currency TEXT NOT NULL DEFAULT "EUR";'
+    );
   } catch (e) {}
   try {
-    await db.execAsync('ALTER TABLE wallets RENAME COLUMN balance_eur_cents TO balance_cents;');
+    await db.execAsync(
+      "ALTER TABLE wallets RENAME COLUMN balance_eur_cents TO balance_cents;"
+    );
   } catch (e) {}
 
   await db.execAsync(`
@@ -60,6 +64,7 @@ export const initDatabase = async () => {
       category TEXT NOT NULL,
       exchange_rate REAL NOT NULL,
       date TEXT NOT NULL,
+      is_pre_trip INTEGER DEFAULT 0,
       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
       FOREIGN KEY (wallet_id) REFERENCES wallets (id) ON DELETE CASCADE
     );
@@ -67,7 +72,14 @@ export const initDatabase = async () => {
 
   // Migration for expenses if needed
   try {
-    await db.execAsync('ALTER TABLE expenses ADD COLUMN amount_original_cents INTEGER NOT NULL DEFAULT 0;');
+    await db.execAsync(
+      "ALTER TABLE expenses ADD COLUMN amount_original_cents INTEGER NOT NULL DEFAULT 0;"
+    );
+  } catch (e) {}
+  try {
+    await db.execAsync(
+      "ALTER TABLE expenses ADD COLUMN is_pre_trip INTEGER DEFAULT 0;"
+    );
   } catch (e) {}
 
   await db.execAsync(`

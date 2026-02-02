@@ -1,5 +1,15 @@
 import React, { useState } from "react";
-import { View, StyleSheet, FlatList, Modal, Alert, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  Modal,
+  Alert,
+  TouchableOpacity,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,14 +30,21 @@ import { formatCurrency } from "../../../utils/format";
 import { Wallet, WalletType, Currency } from "../../../domain/models";
 import { WalletRepository } from "../../../infrastructure/database/repositories/WalletRepository";
 import { ExpenseRepository } from "../../../infrastructure/database/repositories/ExpenseRepository";
-import { addWallet, updateWallet, removeWallet, setWallets } from "../../../store/slices/walletSlice";
+import {
+  addWallet,
+  updateWallet,
+  removeWallet,
+  setWallets,
+} from "../../../store/slices/walletSlice";
 
 export default function WalletsScreen() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const { user } = useSelector((state: RootState) => state.auth);
   const { wallets } = useSelector((state: RootState) => state.wallets);
-  const { exchangeRate, usdExchangeRate } = useSelector((state: RootState) => state.settings);
+  const { exchangeRate, usdExchangeRate } = useSelector(
+    (state: RootState) => state.settings
+  );
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingWallet, setEditingWallet] = useState<Wallet | null>(null);
@@ -224,12 +241,14 @@ export default function WalletsScreen() {
                     {formatCurrency(item.balance, item.currency)}
                   </Typography>
                   <Typography variant="caption" color="#999">
-                    {item.currency === 'CLP'
+                    {item.currency === "CLP"
                       ? formatCurrency(item.balance / exchangeRate, "EUR")
-                      : item.currency === 'EUR'
+                      : item.currency === "EUR"
                       ? formatCurrency(item.balance * exchangeRate, "CLP")
-                      : formatCurrency((item.balance / usdExchangeRate) * exchangeRate, "CLP")
-                    }
+                      : formatCurrency(
+                          (item.balance / usdExchangeRate) * exchangeRate,
+                          "CLP"
+                        )}
                   </Typography>
                 </View>
               </Card>
@@ -255,11 +274,11 @@ export default function WalletsScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={{ flex: 1 }}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalContent, { maxHeight: '90%' }]}>
+            <View style={[styles.modalContent, { maxHeight: "90%" }]}>
               <ScrollView showsVerticalScrollIndicator={false}>
                 <Typography variant="h2" style={styles.modalTitle}>
                   {editingWallet ? "Editar Billetera" : t("wallets.add_wallet")}
@@ -284,18 +303,18 @@ export default function WalletsScreen() {
                   {t("wallets.type")}
                 </Typography>
                 <View style={styles.typeContainer}>
-                  {(["cash", "card", "virtual_card", "credit"] as WalletType[]).map(
-                    (t) => (
-                      <Button
-                        key={t}
-                        title={t}
-                        variant={type === t ? "primary" : "outline"}
-                        onPress={() => setType(t)}
-                        style={styles.typeButton}
-                        textStyle={{ fontSize: 12 }}
-                      />
-                    )
-                  )}
+                  {(
+                    ["cash", "card", "virtual_card", "credit"] as WalletType[]
+                  ).map((t) => (
+                    <Button
+                      key={t}
+                      title={t}
+                      variant={type === t ? "primary" : "outline"}
+                      onPress={() => setType(t)}
+                      style={styles.typeButton}
+                      textStyle={{ fontSize: 12 }}
+                    />
+                  ))}
                 </View>
 
                 <Typography variant="label" style={{ marginBottom: 8 }}>
